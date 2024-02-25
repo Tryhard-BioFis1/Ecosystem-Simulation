@@ -94,9 +94,10 @@ class Blob:
     carbo : float   # 0-1 parameter how many energy gets from feeding from preys
     herbo : float   # 0-1 parameter how many energy gets from the surroundings
     speed : float   # 0-1 parameter in averadge how many tiles moves per iteration
+    vision : float  # 0-1 parameter divided by 0.15 is the how far it sees
     age: int        # ** parameter the current age of the blob 
 
-    def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None)->None:
+    def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None, vision=None)->None:
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
@@ -105,21 +106,28 @@ class Blob:
             self.herbo = 1-self.carno if herbo is None else herbo
             self.speed = random.uniform(0.25, 0.75) if speed is None else speed
             self.age = random.randint(1,500) if age is None else age
+            self.vision = random.uniform(0.25, 0.75) if vision is None else vision
 
     def compute_next_move(self, blob: 'Blob'): 
         """Compute a factor which determines how Self will move"""
         dx_prop , dy_prop = 0,0
-        for blobi in grid.get_neighbours_dist(self.x, self.y, 1):
-            dx_prop += 2/3*mod_dist(self.x,blobi.x,grid.dim) if self.carno > 1.2*blobi.carno else -2/3*blobi.herbo*mod_dist(self.x,blobi.x,grid.dim)
-            dy_prop += 2/3*mod_dist(self.y,blobi.y,grid.dim) if self.carno > 1.2*blobi.carno else -2/3*blobi.herbo*mod_dist(self.y,blobi.y,grid.dim)
-        for blobi in grid.get_neighbours_dist(self.x, self.y, 2):
-            dx_prop += 1/3*mod_dist(self.x,blobi.x,grid.dim) if self.carno > 1.2*blobi.carno else -1/3*blobi.herbo*mod_dist(self.x,blobi.x,grid.dim)
-            dy_prop += 1/3*mod_dist(self.y,blobi.y,grid.dim) if self.carno > 1.2*blobi.carno else -1/3*blobi.herbo*mod_dist(self.y,blobi.y,grid.dim)
+        for k in range(1, int(1 + self.vision//0.2)):
+            for blobi in grid.get_neighbours_dist(self.x, self.y, k):
+                if self.carno > 1.2*blobi.carno:
+                    dx_prop += 2/3*mod_dist(self.x, blobi.x, grid.dim)/k
+                    dy_prop += 2/3*mod_dist(self.y, blobi.y, grid.dim)/k
+                elif blobi.carno > 1.2*self.carno:
+                    dx_prop -= 2/3*mod_dist(self.x, blobi.x, grid.dim)/k
+                    dy_prop -= 2/3*mod_dist(self.y, blobi.y, grid.dim)/k
+                else:
+                    dx_prop -= 1/3*blobi.herbo*mod_dist(self.x,blobi.x,grid.dim)/k
+                    dy_prop -= 1/3*blobi.herbo*mod_dist(self.y,blobi.y,grid.dim)/k
+
         abs_prop = np.sqrt(dx_prop*dx_prop+dy_prop*dy_prop) 
 
         dx , dy = 0 , 0
         if abs_prop < 1e-6 : 
-            if random.random() < 0.2:        
+            if random.random() < 0.2:   #This could be a parameter that states the "curiosity" even though some individuals may condier that moving has no advantages, it can actually improve their situation or find more space
                 dx = random.randint(-1, 1)
                 dy = random.randint(-1, 1)
         else:
@@ -137,9 +145,10 @@ class Blob:
             dx , dy = self.compute_next_move(grid)
 
             # Update position with periodic boundary conditions
-            self.x = (self.x + dx) % (SCREEN_WIDTH // CELL_SIZE)
-            self.y = (self.y + dy) % (SCREEN_HEIGHT // CELL_SIZE)
-            self.energy -= 0.5
+            if dx != 0 or dy != 0:
+                self.x = (self.x + dx) % (SCREEN_WIDTH // CELL_SIZE)
+                self.y = (self.y + dy) % (SCREEN_HEIGHT // CELL_SIZE)
+                self.energy -= 0.5
 
     def update_vital(self, grid:'Grid', metabo:float = 0.1)->None:
         """
@@ -147,7 +156,7 @@ class Blob:
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+
-                                         0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))+0.25*len(grid.get_neighbours_dist(self.x, self.y, 2))):
+                                         0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))+0.25*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.125*len(grid.get_neighbours_dist(self.x, self.y, 3))):
             self.energy += 1
         self.age +=1
         self.energy -=metabo
@@ -159,10 +168,10 @@ class Blob:
     def may_reproduce(self):#'Blob'|None
         """If blob pass a energy threshold, a new Blob is born with some mutations"""
         if self.energy>=100:
-            self.energy = 40
+            self.energy = 50
             noise_for_feeding = noise()
-            return Blob(self.x, self.y, 40, compress(self.carno+noise_for_feeding), 
-                        compress(self.herbo-noise_for_feeding), compress(self.speed+noise()), age=1 )
+            return Blob(self.x, self.y, 30, compress(self.carno+noise_for_feeding), 
+                        compress(self.herbo-noise_for_feeding), compress(self.speed+noise()), age=1, vision =  compress(self.vision + noise()))
         else: return None
 
 
@@ -246,7 +255,7 @@ while running:
             neighbours = grid.blobs_at_tile(blob.x, blob.y)
 
             for neig in neighbours:
-                if neig.carno < 0.9*blob.carno: 
+                if blob.carno > 1.2*neig.carno: 
                     blob.energy += neig.energy * 0.15 + 10 
                     neig.energy = -1
 
@@ -267,7 +276,7 @@ while running:
         pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), 0), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
         
     pygame.display.flip()
-    clock.tick(400)  # Adjust the speed of the simulation by changing the argument
+    clock.tick(500)  # Adjust the speed of the simulation by changing the argument
 
     # Display iteration's statistics and Store data to create the final graphics
     popu_stat.append(len(blobs))
