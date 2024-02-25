@@ -198,6 +198,7 @@ popu_stat = []
 speed_stat = []
 herbo_stat = []
 carno_stat = []
+vision_stat = []
 time_per_iter_ = []
 
 # Initialize Pygame and set up the screen
@@ -283,9 +284,12 @@ while running:
     act_speed_lst = [blob.speed for blob in blobs]
     act_herbo_lst = [blob.herbo for blob in blobs]
     act_carno_lst = [blob.carno for blob in blobs]
+    act_vision_lst = [blob.vision for blob in blobs]
     speed_stat.append((np.mean(act_speed_lst), np.std(act_speed_lst)))
     herbo_stat.append((np.mean(act_herbo_lst), np.std(act_herbo_lst)))
     carno_stat.append((np.mean(act_carno_lst), np.std(act_carno_lst)))
+    vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
+
     
     print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
     print(f"Babys: {count_num_baby}, ", end='')
@@ -293,7 +297,8 @@ while running:
     # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
     # print(f"Mean speed: {np.mean(act_speed_lst)},  ", end='')
     # print(f"Mean herbiborous: {np.mean(act_herbo_lst)}, ", end='')
-    print(f"Mean carnivorous: {np.mean(act_carno_lst)}, ", end='')
+    # print(f"Mean carnivorous: {np.mean(act_carno_lst)}, ", end='')
+    print(f"Mean carnivorous: {np.mean(act_vision_lst)}, ", end='')
     # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
     print()
 
@@ -324,6 +329,9 @@ ax1.errorbar(x=[i+1 for i in range(len(herbo_stat))], y=[avg_std[0] for avg_std 
 ax1.errorbar(x=[i+1 for i in range(len(carno_stat))], y=[avg_std[0] for avg_std in carno_stat],
               yerr=[avg_std[1] for avg_std in carno_stat], fmt='o', linewidth=2, capsize=6, color='red', 
               errorevery=max(1,len(popu_stat)//25), label = 'carno' )
+ax1.errorbar(x=[i+1 for i in range(len(vision_stat))], y=[avg_std[0] for avg_std in vision_stat],
+              yerr=[avg_std[1] for avg_std in vision_stat], fmt='o', linewidth=2, capsize=6, color='cyan', 
+              errorevery=max(1,len(popu_stat)//25), label = 'vision' )
 ax1.set_xlabel("time (index)")
 ax1.set_ylabel("Averadge stat with std as error bars")
 ax1.legend()
