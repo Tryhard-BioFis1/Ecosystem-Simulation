@@ -3,17 +3,11 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-import math
+import seaborn as sns
 
-"""
-        SECOND IMPLEMENTATION OF PREDATORS
-"""
-
-
-# Define functions and objects
-def noise()->float:
+def noise(sigma:float=0.2) -> float:
     """Encapsulates the generation of a random number with triangular distribution"""
-    return random.triangular(-0.1,0.1)
+    return np.random.normal(scale=sigma)
 
 def compress(a:float, max_lim:float =1)->float:
     """
@@ -34,7 +28,7 @@ def mod_dist(a:int, b:int, n:int)->int:
 class Grid:
     """Consists in the grid where blobs move and interact"""
     dim : int   # lenght of grids side -> Grid has dim*dim shape
-    dic : dict  # dictionaty which stores the blobs, keys are tuple (x,y) of non empty tiles
+    dic : dict  # dictionary which stores the blobs, keys are tuple (x,y) of non empty tiles
                 #   and values list with those blobs which are at that position
 
     def __init__(self, blob_list:list['Blob'], dim:int)->None:
@@ -91,32 +85,44 @@ class Blob:
     x : int         # horizontal position 
     y : int         # vertical position
     energy : int    # 0-100 amount of energy stored 
-    carbo : float   # 0-1 parameter how many energy gets from feeding from preys
+    carno : float   # 0-1 parameter how many energy gets from feeding from preys
     herbo : float   # 0-1 parameter how many energy gets from the surroundings
     speed : float   # 0-1 parameter in averadge how many tiles moves per iteration
     vision : float  # 0-1 parameter divided by 0.15 is the how far it sees
     age: int        # ** parameter the current age of the blob 
+    offens : float  
+    energy_for_babies: float # > 1 parameter that indicates the number of babies
+    number_of_babies: float # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
+    curiosity: float  # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
 
-    def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None, vision=None)->None:
+
+    def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None, vision=None, offens=None, 
+                 energy_for_babies=None, number_of_babies=None, curiosity=None, agressive=None)->None:
+            
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
             self.energy = random.randint(20,80) if energy is None else energy
             self.carno= random.uniform(0.1, 0.9) if carno is None else carno
-            self.herbo = 1-self.carno if herbo is None else herbo
-            self.speed = random.uniform(0.25, 0.75) if speed is None else speed
+            self.herbo = random.uniform(0.1, 0.9) if herbo is None else herbo
+            self.speed = random.uniform(0.1, 0.9) if speed is None else speed
             self.age = random.randint(1,500) if age is None else age
-            self.vision = random.uniform(0.25, 0.75) if vision is None else vision
+            self.vision = random.uniform(0.1, 0.9) if vision is None else vision
+            self.offens = random.uniform(0.1, 0.9) if offens is None else offens
+            self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
+            self.number_of_babies = random.uniform(0, 1) if number_of_babies is None else number_of_babies
+            self.curiosity = random.uniform(0, 1) if curiosity is None else curiosity
+            self.agressive = random.uniform(0, 1) if agressive is None else agressive
 
-    def compute_next_move(self, blob: 'Blob'): 
+    def compute_next_move(self, grid:'Grid'): 
         """Compute a factor which determines how Self will move"""
         dx_prop , dy_prop = 0,0
         for k in range(1, int(1 + self.vision//0.2)):
             for blobi in grid.get_neighbours_dist(self.x, self.y, k):
-                if self.carno > 1.2*blobi.carno:
+                if self.offens > 1.2*blobi.offens: #Has to be modified in order to establish a more random interaction
                     dx_prop += 2/3*mod_dist(self.x, blobi.x, grid.dim)/k
                     dy_prop += 2/3*mod_dist(self.y, blobi.y, grid.dim)/k
-                elif blobi.carno > 1.2*self.carno:
+                elif blobi.offens > 1.2*self.offens:
                     dx_prop -= 2/3*mod_dist(self.x, blobi.x, grid.dim)/k
                     dy_prop -= 2/3*mod_dist(self.y, blobi.y, grid.dim)/k
                 else:
@@ -125,20 +131,20 @@ class Blob:
 
         abs_prop = np.sqrt(dx_prop*dx_prop+dy_prop*dy_prop) 
 
-        dx , dy = 0 , 0
-        if abs_prop < 1e-6 : 
-            if random.random() < 0.2:   #This could be a parameter that states the "curiosity" even though some individuals may condier that moving has no advantages, it can actually improve their situation or find more space
+        dx, dy = 0, 0
+        if abs_prop < 1e-6:
+            if random.random() < self.curiosity:
                 dx = random.randint(-1, 1)
                 dy = random.randint(-1, 1)
         else:
             if random.random() < abs(dx_prop/abs_prop):
                 dx = int(np.sign(dx_prop))
-            if random.random() < abs(dy_prop/abs_prop): #aquí antes había un elif, por qué?? En teoría los Blobs se pueden mover en diagonal
+            if random.random() < abs(dy_prop/abs_prop):
                 dy = int(np.sign(dy_prop))
 
         return dx, dy
 
-    def move(self, grid):
+    def move(self, grid, movement_energy=0.5):
         if random.random() < self.speed:  #creo que hay un error en como estamos entendiendo speed. A estas alturas, me parece que los blobs 
                                         #deberían elegir si moverse o no. Hay posiciones en las que evidentemente sale más rentable no moverse. Por qué lo harían aún siendo capaces de hacerlo
 
@@ -148,31 +154,51 @@ class Blob:
             if dx != 0 or dy != 0:
                 self.x = (self.x + dx) % (SCREEN_WIDTH // CELL_SIZE)
                 self.y = (self.y + dy) % (SCREEN_HEIGHT // CELL_SIZE)
-                self.energy -= 0.5
+                self.energy -= movement_energy
+
+    def fight(self, blob:'Blob', easy_eat:float =0.25)->None:
+        if self.offens > blob.offens: #self eats blob if 
+            if self.offens-blob.offens > easy_eat or random.random() < (1/easy_eat)*(self.offens-blob.offens):
+                    self.energy += blob.energy * self.carno
+                    blob.energy = -100
+        else:
+            if self.offens-blob.offens < -easy_eat or random.random() < -(1/easy_eat)*(self.offens-blob.offens):
+                    blob.energy += self.energy * blob.carno
+                    self.energy = -100
+
+
 
     def update_vital(self, grid:'Grid', metabo:float = 0.1)->None:
         """
             Blob gains energy from surrondings with probability based on herbo level
             If multiple blobs are in the same tile the energy is distributed among them
         """
-        if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+
-                                         0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))+0.25*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.125*len(grid.get_neighbours_dist(self.x, self.y, 3))):
+        if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))
+                                         +0.25*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.125*len(grid.get_neighbours_dist(self.x, self.y, 3))):
             self.energy += 1
         self.age +=1
-        self.energy -=metabo
+        
+        self.energy -= metabo*(1+ (self.herbo+self.carno+self.speed+self.vision+self.offens)/5 )
+        # print(self.herbo+self.carno+self.speed+self.vision+self.offens)
 
-    def is_alive(self)->None:
+    def is_alive(self, to_append = dict)->None:
         """Checks if blob remains alive or is already dead"""
-        return self.energy > 0 and self.age < 1000
+        return self.energy > 0 and self.age < 500
     
-    def may_reproduce(self):#'Blob'|None
-        """If blob pass a energy threshold, a new Blob is born with some mutations"""
-        if self.energy>=100:
-            self.energy = 50
-            noise_for_feeding = noise()
-            return Blob(self.x, self.y, 30, compress(self.carno+noise_for_feeding), 
-                        compress(self.herbo-noise_for_feeding), compress(self.speed+noise()), age=1, vision =  compress(self.vision + noise()))
-        else: return None
+    def reproduce(self, giving_birth_cost=1.2) -> None:  # 'Blob'|None
+            """If blob pass a energy threshold, a new Blob is born with some mutations"""
+            babies_energy = self.energy * self.energy_for_babies
+            self.energy -= babies_energy*giving_birth_cost
+            babies = []
+            k = int(self.number_of_babies//0.15)
+            for _ in range(k):
+                babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/k, carno=compress(self.carno+noise()), 
+                        herbo=compress(self.herbo+noise()), speed=compress(self.speed+noise()), age=1, 
+                        vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), 
+                        energy_for_babies=compress(self.energy_for_babies+noise()), curiosity=
+                        compress(self.curiosity+noise()), agressive=compress(self.agressive+noise())))
+
+            return babies
 
 
 
@@ -181,7 +207,7 @@ SCREEN_WIDTH = 500
 SCREEN_HEIGHT = 500
 CELL_SIZE = 5
 # To initialize blobs
-START_BLOB_NUM = 200
+START_BLOB_NUM = 500
 PATTERN_BOOL = False
 # Counters
 iteration_count = 0
@@ -191,7 +217,8 @@ BACKGR= (255, 255, 250)
 GREEN = (0, 255, 0)
 
 # Tuneable parameters / characteristics of blobs
-metabolism = 0.3
+metabolism = 0.1
+energy_to_reproduce = 60
 
 # Statistics 
 popu_stat = []
@@ -200,6 +227,7 @@ herbo_stat = []
 carno_stat = []
 vision_stat = []
 time_per_iter_ = []
+mortuary_stat_ = {'e':0, 'l':0, 'o':0} # death by eaten, low energy, old
 
 # Initialize Pygame and set up the screen
 pygame.init()
@@ -227,6 +255,9 @@ if PATTERN_BOOL:
 
 else: blobs = [Blob(random.randint(0, SCREEN_WIDTH // CELL_SIZE), random.randint(0, SCREEN_HEIGHT // CELL_SIZE)) for _ in range(START_BLOB_NUM)]
 
+# Initialize needed objects
+grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
+
 # Main loop
 running = True
 clock = pygame.time.Clock()
@@ -237,8 +268,7 @@ while running:
         if event.type == pygame.QUIT or blobs==[]:
             running = False
 
-    # Initialize needed objects
-    grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
+    grid.update(blobs)
 
     # Let blobs move / Update each blob position
     for blob in blobs:
@@ -247,34 +277,39 @@ while running:
     # Update the grid with the new positions
     grid.update(blobs)
 
+    time_vital = time.time()
     for blob in blobs:
         blob.update_vital(grid, metabolism)
+    print("Time_vital: ", time.time() - time_vital)
 
+    time_carno = time.time()
     # Carno
     for blob in blobs:
         if blob.energy > 0:
             neighbours = grid.blobs_at_tile(blob.x, blob.y)
 
             for neig in neighbours:
-                if blob.carno > 1.2*neig.carno: 
-                    blob.energy += neig.energy * 0.15 + 10 
-                    neig.energy = -1
+                blob.fight(neig)
+    print("Time carno: ", time.time() - time_carno)
 
+    time_repro = time.time()
     # Let the blobs feed and check if they may reproduce
     for blob in blobs:
-        if blob.energy > 0:
-            maybe_baby = blob.may_reproduce()
-            if maybe_baby is not None:
-                blobs.append(maybe_baby)
-                count_num_baby +=1
+        if blob.energy > 0 and blob.energy >= energy_to_reproduce:
+            babies = blob.reproduce()
+            blobs.extend(babies)
+            count_num_baby += len(babies)
+    print("Time rpro: ", time.time() - time_repro)
 
+    time_remove = time.time()
     # Remove dead blobs
     blobs = [blob for blob in blobs if blob.is_alive()]
+    print("Time_remove: ", time.time() - time_remove)
 
     # Draw blobs
     screen.fill(BACKGR)
     for blob in blobs:
-        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), 0), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), compress(255*blob.offens,255)), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
         
     pygame.display.flip()
     clock.tick(500)  # Adjust the speed of the simulation by changing the argument
@@ -292,14 +327,15 @@ while running:
 
     
     print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
-    print(f"Babys: {count_num_baby}, ", end='')
+    print(f"Babies: {count_num_baby}, ", end='')
     # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
     # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
     # print(f"Mean speed: {np.mean(act_speed_lst)},  ", end='')
     # print(f"Mean herbiborous: {np.mean(act_herbo_lst)}, ", end='')
     # print(f"Mean carnivorous: {np.mean(act_carno_lst)}, ", end='')
-    print(f"Mean carnivorous: {np.mean(act_vision_lst)}, ", end='')
+    # print(f"Mean vision: {np.mean(act_vision_lst)}, ", end='')
     # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
+    # print(np.mean([blob.offens for blob in blobs]), end='')
     print()
 
     iteration_count += 1
@@ -342,12 +378,22 @@ ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
 ax3 = fig.add_subplot(2,3,4, projection='3d')
-ax3.scatter([blob.herbo for blob in blobs], [blob.carno for blob in blobs],[blob.speed for blob in blobs], s=5, alpha=0.5, c='k')
+ax3.scatter([blob.carno for blob in blobs], [blob.vision for blob in blobs],[blob.speed for blob in blobs], c=[blob.offens for blob in blobs], s=5, alpha=0.5)
 ax3.set_xlim(0,1)
 ax3.set_ylim(0,1)
 ax3.set_zlim(0,1)
-ax3.set_xlabel("herbo")
-ax3.set_ylabel("carno")
+ax3.set_xlabel("carno")
+ax3.set_ylabel("vision")
 ax3.set_zlabel("speed")
+
+ax4 = fig.add_subplot(2,3,5, projection='3d')
+ax4.plot([avg_std[0] for avg_std in speed_stat], [avg_std[0] for avg_std in carno_stat], [avg_std[0] for avg_std in vision_stat])
+ax4.set_xlabel("speed")
+ax4.set_ylabel("carno")
+ax3.set_zlabel("vision")
+
+
+sns.displot( data=[blob.energy_for_babies for blob in blobs], kde=True, bins=20)
+
 
 plt.show()
