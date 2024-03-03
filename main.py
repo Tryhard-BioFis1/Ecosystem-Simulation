@@ -5,7 +5,7 @@ import numpy as np
 import time 
 import seaborn as sns
 
-def noise(sigma:float=0.2) -> float:
+def noise(sigma:float=0.05) -> float:
     """Encapsulates the generation of a random number with triangular distribution"""
     return np.random.normal(scale=sigma)
 
@@ -94,10 +94,11 @@ class Blob:
     energy_for_babies: float # > 1 parameter that indicates the number of babies
     number_of_babies: float # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
     curiosity: float  # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
+    collab: float #0-1 parameter that establishes how likely will share its energy with other blobs with similar stats
 
 
     def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None, vision=None, offens=None, 
-                 energy_for_babies=None, number_of_babies=None, curiosity=None, agressive=None)->None:
+                 energy_for_babies=None, number_of_babies=None, curiosity=None, agressive=None, colab=None)->None:
             
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
@@ -110,9 +111,10 @@ class Blob:
             self.vision = random.uniform(0.1, 0.9) if vision is None else vision
             self.offens = random.uniform(0.1, 0.9) if offens is None else offens
             self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
-            self.number_of_babies = random.uniform(0, 1) if number_of_babies is None else number_of_babies
+            self.number_of_babies = random.uniform(0.5, 0.6) if number_of_babies is None else number_of_babies
             self.curiosity = random.uniform(0, 1) if curiosity is None else curiosity
             self.agressive = random.uniform(0, 1) if agressive is None else agressive
+            self.colab = random.uniform(0, 1) if colab is None else colab
 
     def compute_next_move(self, grid:'Grid'): 
         """Compute a factor which determines how Self will move"""
@@ -175,10 +177,10 @@ class Blob:
         """
         if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.25*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.125*len(grid.get_neighbours_dist(self.x, self.y, 3))):
-            self.energy += 1
+            self.energy += 0.7
         self.age +=1
         
-        self.energy -= metabo*(1+ (self.herbo+self.carno+self.speed+self.vision+self.offens)/5 )
+        self.energy -= metabo*(1+ (self.herbo+self.carno+self.speed+self.vision+3*self.offens)/7 )
         # print(self.herbo+self.carno+self.speed+self.vision+self.offens)
 
     def is_alive(self, to_append = dict)->None:
@@ -195,8 +197,8 @@ class Blob:
                 babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/k, carno=compress(self.carno+noise()), 
                         herbo=compress(self.herbo+noise()), speed=compress(self.speed+noise()), age=1, 
                         vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), 
-                        energy_for_babies=compress(self.energy_for_babies+noise()), curiosity=
-                        compress(self.curiosity+noise()), agressive=compress(self.agressive+noise())))
+                        energy_for_babies=compress(self.energy_for_babies+noise()), number_of_babies=compress(self.number_of_babies+noise()), 
+                        curiosity=compress(self.curiosity+noise()), agressive=compress(self.agressive+noise()), colab=compress(self.colab+noise())))
 
             return babies
 
@@ -309,7 +311,7 @@ while running:
     # Draw blobs
     screen.fill(BACKGR)
     for blob in blobs:
-        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), compress(255*blob.offens,255)), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), 0), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
         
     pygame.display.flip()
     clock.tick(500)  # Adjust the speed of the simulation by changing the argument
@@ -393,7 +395,7 @@ ax4.set_ylabel("carno")
 ax3.set_zlabel("vision")
 
 
-sns.displot( data=[blob.energy_for_babies for blob in blobs], kde=True, bins=20)
+sns.displot( data=[blob.number_of_babies for blob in blobs], kde=True, bins=20)
 
 
 plt.show()
