@@ -3,7 +3,6 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-import seaborn as sns
 
 def noise(sigma:float=0.02)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
@@ -113,7 +112,7 @@ class Blob:
             self.agressive = random.uniform(0, 1) if agressive is None else agressive
             self.colab = random.uniform(0, 1) if colab is None else colab
 
-    def compute_next_move(self, grid:'Grid')->(int,int): 
+    def compute_next_move(self, grid:'Grid')->tuple[int,int]: 
         """Compute a factor which determines how Self will move"""
         dx_prop , dy_prop = 0,0
         for k in range(1, int(1 + self.vision//0.2)):
@@ -262,13 +261,19 @@ grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
 
 # Main loop
 running = True
+paused = False
 clock = pygame.time.Clock()
+clock_tick = 500
 
 while running:
     t_start_iter = time.time()
     for event in pygame.event.get():
         if event.type == pygame.QUIT or blobs==[]:
             running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_l]: clock_tick +=2
+    elif keys[pygame.K_j]: clock_tick -=2
 
     # Refresh the grid to the last update
     grid.update(blobs)
@@ -284,7 +289,7 @@ while running:
     time_vital = time.time()
     for blob in blobs:
         blob.update_vital(grid, metabolism)
-    print("Time_vital: ", time.time() - time_vital)
+    # print("Time_vital: ", time.time() - time_vital)
 
     time_carno = time.time()
     # Let blobs depredate each other
@@ -294,7 +299,7 @@ while running:
 
             for neig in neighbours:
                 blob.fight(neig)
-    print("Time carno: ", time.time() - time_carno)
+    # print("Time carno: ", time.time() - time_carno)
 
     time_repro = time.time()
     # Let the blobs feed and check if they may reproduce
@@ -303,20 +308,20 @@ while running:
             babies = blob.reproduce()
             blobs.extend(babies)
             count_num_baby += len(babies)
-    print("Time rpro: ", time.time() - time_repro)
+    # print("Time rpro: ", time.time() - time_repro)
 
     time_remove = time.time()
     # Remove dead blobs
     blobs = [blob for blob in blobs if blob.is_alive()]
-    print("Time_remove: ", time.time() - time_remove)
+    # print("Time_remove: ", time.time() - time_remove)
 
     # Draw blobs
     screen.fill(BACKGR)
     for blob in blobs:
-        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), compress(255*blob.offens,255)), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(screen, (compress(255*blob.carno,255), compress(255*blob.herbo,255), 0), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
         
     pygame.display.flip()
-    clock.tick(500)  # Adjust the speed of the simulation by changing the argument
+    clock.tick(clock_tick)  # Adjust the speed of the simulation by changing the argument
 
     # Display iteration's statistics and Store data to create the final graphics
     popu_stat.append(len(blobs))
@@ -331,7 +336,7 @@ while running:
     vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
     offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
     
-    print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
+    # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
     # print(f"Babies: {count_num_baby}, ", end='')
     # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
     # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
@@ -342,7 +347,9 @@ while running:
     # print(f"Mean offens: {np.mean(act_offens_lst)}, ", end='')
     # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
     # print(np.mean([blob.offens for blob in blobs]), end='')
+    print(f"clock_tick set to: {clock_tick}", end='')
     print()
+    
 
     iteration_count += 1
     time_per_iter_.append(time.time()-t_start_iter)
@@ -352,7 +359,7 @@ pygame.quit()
 
 
 # Show final statistics
-fig = plt.figure(figsize=(12,8))
+fig = plt.figure(figsize=(15,8))
 
 ax0 = fig.add_subplot(2,3,1)
 ax0.plot([i+1 for i in range(len(popu_stat))], popu_stat)
@@ -399,8 +406,9 @@ ax4.set_xlabel("herbo")
 ax4.set_ylabel("carno")
 ax4.set_zlabel("offens")
 
-
-sns.displot( data=[blob.number_of_babies for blob in blobs], kde=True, bins=20)
-
+ax5 = fig.add_subplot(2,3,6)
+ax5.hist2d([blob.number_of_babies for blob in blobs], [blob.energy_for_babies for blob in blobs], bins=20)
+ax5.set_xlabel("number_of_babies")
+ax5.set_ylabel("energy_for_babies")
 
 plt.show()
