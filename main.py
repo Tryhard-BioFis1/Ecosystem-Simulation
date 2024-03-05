@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time 
 
-def noise(sigma:float=0.02)->float:
+def noise(sigma:float=0.015)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
     return np.random.normal(scale=sigma)
 
@@ -175,11 +175,11 @@ class Blob:
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.5*len(grid.get_neighbours_dist(self.x, self.y, 1)) 
-                                         +0.25*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.0*len(grid.get_neighbours_dist(self.x, self.y, 3))):
+                                         +0.2*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.1*len(grid.get_neighbours_dist(self.x, self.y, 3))):
             self.energy += 0.7
         self.age +=1
         
-        self.energy -= metabo*(1+ (self.herbo+self.carno+self.speed+self.vision+self.offens)/5 )
+        self.energy -= metabo*(1+ (self.herbo+self.carno+self.speed+self.vision+self.offens)/5 ) 
         # print(self.herbo+self.carno+self.speed+self.vision+self.offens)
 
     def is_alive(self)->None:
@@ -191,9 +191,9 @@ class Blob:
         babies_energy = self.energy * self.energy_for_babies
         self.energy -= babies_energy*giving_birth_cost
         babies = []
-        k = int(self.number_of_babies//0.15)
-        for _ in range(k):
-            babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/k, carno=compress(self.carno+noise()), 
+        babies_num = int(self.number_of_babies//0.15)
+        for _ in range(babies_num):
+            babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/babies_num, carno=compress(self.carno+noise()), 
                     herbo=compress(self.herbo+noise()), speed=compress(self.speed+noise()), age=1, 
                     vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), 
                     energy_for_babies=compress(self.energy_for_babies+noise()), number_of_babies=compress(self.number_of_babies+noise()), 
@@ -204,9 +204,9 @@ class Blob:
 
 
 # Parameters of simulation
-SCREEN_WIDTH = 500
-SCREEN_HEIGHT = 500
-CELL_SIZE = 5
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
+CELL_SIZE = 8
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
@@ -336,7 +336,7 @@ while running:
     vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
     offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
     
-    # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
+    print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
     # print(f"Babies: {count_num_baby}, ", end='')
     # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
     # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
@@ -345,8 +345,7 @@ while running:
     # print(f"Mean carnivorous: {np.mean(act_carno_lst)}, ", end='')
     # print(f"Mean vision: {np.mean(act_vision_lst)}, ", end='')
     # print(f"Mean offens: {np.mean(act_offens_lst)}, ", end='')
-    # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
-    # print(np.mean([blob.offens for blob in blobs]), end='')
+    print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
     print(f"clock_tick set to: {clock_tick}", end='')
     print()
     
