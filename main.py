@@ -3,6 +3,9 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
+from sklearn.decomposition import PCA
+# from ECmethods1 import Blob, Grid, noise, compress, mod_dist
+
 
 def noise(sigma:float=0.015)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
@@ -58,13 +61,6 @@ class Grid:
             neighbours.extend(self.blobs_at_tile( (i)%self.dim, (c_y + vrad)%self.dim ))
             neighbours.extend(self.blobs_at_tile( (i)%self.dim, (c_y - vrad)%self.dim ))
 
-        return neighbours
-    
-    def get_neighbours_inter(self, c_x:int, c_y:int, vrad_min:int, vrad_max:int)->list['Blob']:
-        """Returns the neighbours of tile (c_x,c_y) at certain interval distance from vrad_min to vrad_max"""
-        neighbours = []
-        for vrad_i in range(vrad_min, vrad_max+1):
-            neighbours.extend(self.get_neighbours_dist(c_x, c_y, vrad_i))
         return neighbours
 
     def update(self, blob_list:list['Blob'])->None:
@@ -151,8 +147,8 @@ class Blob:
 
             # Update position with periodic boundary conditions
             if dx != 0 or dy != 0:
-                self.x = (self.x + dx) % (SCREEN_WIDTH // CELL_SIZE)
-                self.y = (self.y + dy) % (SCREEN_HEIGHT // CELL_SIZE)
+                self.x = (self.x + dx) % grid.dim
+                self.y = (self.y + dy) % grid.dim
                 self.energy -= movement_energy
 
     def fight(self, blob:'Blob', easy_eat:float =0.25)->None:
@@ -174,7 +170,7 @@ class Blob:
             Blob gains energy from surrondings with probability based on herbo level
             If multiple blobs are in the same tile the energy is distributed among them
         """
-        if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.5*len(grid.get_neighbours_dist(self.x, self.y, 1)) 
+        if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.5*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.2*len(grid.get_neighbours_dist(self.x, self.y, 2)) + 0.1*len(grid.get_neighbours_dist(self.x, self.y, 3))):
             self.energy += 0.7
         self.age +=1
@@ -201,12 +197,10 @@ class Blob:
 
         return babies
 
-
-
 # Parameters of simulation
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
-CELL_SIZE = 8
+CELL_SIZE = 2
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
@@ -254,7 +248,7 @@ if PATTERN_BOOL:
         for j in range(len(pattern[0])):
             if pattern[i][j] == 1 : blobs.append( Blob( pos[0]+j, pos[1]+i) )
 
-else: blobs = [Blob(random.randint(0, SCREEN_WIDTH // CELL_SIZE), random.randint(0, SCREEN_HEIGHT // CELL_SIZE)) for _ in range(START_BLOB_NUM)]
+else: blobs = [Blob(random.randint(0, SCREEN_WIDTH // CELL_SIZE-1), random.randint(0, SCREEN_HEIGHT // CELL_SIZE-1)) for _ in range(START_BLOB_NUM)]
 
 # Initialize needed objects
 grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
@@ -276,22 +270,28 @@ while running:
     elif keys[pygame.K_j]: clock_tick -=2
 
     # Refresh the grid to the last update
+    time_update = time.time()
     grid.update(blobs)
+    print("update: ", time.time() - time_update, end=' ')
 
     # Let blobs move / Update each blob position
+    time_move = time.time()
     for blob in blobs:
         blob.move(grid)
+    print("move: ", time.time() - time_move, end=' ')
     
     # Update the grid with the new positions
+    # time_update = time.time()
     grid.update(blobs)
+    # print("update: ", time.time() - time_update, end=' ')
 
     # Let blobs gain energy form the enviroment 
     time_vital = time.time()
     for blob in blobs:
         blob.update_vital(grid, metabolism)
-    # print("Time_vital: ", time.time() - time_vital)
+    print("vital: ", time.time() - time_vital, end=' ')
 
-    time_carno = time.time()
+    # time_carno = time.time()
     # Let blobs depredate each other
     for blob in blobs:
         if blob.energy > 0:
@@ -299,21 +299,21 @@ while running:
 
             for neig in neighbours:
                 blob.fight(neig)
-    # print("Time carno: ", time.time() - time_carno)
+    # print("carno: ", time.time() - time_carno, end=' ')
 
-    time_repro = time.time()
+    # time_repro = time.time()
     # Let the blobs feed and check if they may reproduce
     for blob in blobs:
         if blob.energy > 0 and blob.energy >= energy_to_reproduce:
             babies = blob.reproduce()
             blobs.extend(babies)
             count_num_baby += len(babies)
-    # print("Time rpro: ", time.time() - time_repro)
+    # print("rpro: ", time.time() - time_repro, end=' ')
 
-    time_remove = time.time()
+    # time_remove = time.time()
     # Remove dead blobs
     blobs = [blob for blob in blobs if blob.is_alive()]
-    # print("Time_remove: ", time.time() - time_remove)
+    # print("remove: ", time.time() - time_remove, end=' ')
 
     # Draw blobs
     screen.fill(BACKGR)
@@ -335,6 +335,7 @@ while running:
     carno_stat.append((np.mean(act_carno_lst), np.std(act_carno_lst)))
     vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
     offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
+
     
     print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
     # print(f"Babies: {count_num_baby}, ", end='')
@@ -345,8 +346,8 @@ while running:
     # print(f"Mean carnivorous: {np.mean(act_carno_lst)}, ", end='')
     # print(f"Mean vision: {np.mean(act_vision_lst)}, ", end='')
     # print(f"Mean offens: {np.mean(act_offens_lst)}, ", end='')
-    print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
-    print(f"clock_tick set to: {clock_tick}", end='')
+    # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
+    # print(f"clock_tick set to: {clock_tick}", end='')
     print()
     
 
