@@ -140,9 +140,7 @@ class Blob:
 
     def move(self, grid, movement_energy=0.5)->None:
         """Update the position of Self"""
-        if random.random() < self.speed:  #creo que hay un error en como estamos entendiendo speed. A estas alturas, me parece que los blobs 
-                                        #deberían elegir si moverse o no. Hay posiciones en las que evidentemente sale más rentable no moverse. Por qué lo harían aún siendo capaces de hacerlo
-
+        if random.random() < self.speed: 
             dx , dy = self.compute_next_move(grid)
 
             # Update position with periodic boundary conditions
