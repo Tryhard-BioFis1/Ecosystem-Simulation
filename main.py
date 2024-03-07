@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
+import math
 from sklearn.decomposition import PCA
 # from ECmethods1 import Blob, Grid, noise, compress, mod_dist
 
@@ -26,6 +27,16 @@ def mod_dist(a:int, b:int, n:int)->int:
     dst = min(abs(b_-a_), n-abs(b_-a_))
     if (a_+dst)%n == b_ : return dst
     return -dst
+
+def array_distance(array1, array2, p=2):
+    if len(array1) != len(array2):
+        raise ValueError("Arrays must have the same length")
+    
+    powered_diff_sum = sum(abs(x - y) ** p for x, y in zip(array1, array2))
+    return powered_diff_sum ** (1/p)
+
+def blob_to_array(blob):
+    return [blob.carno, blob.herbo, blob.speed, blob.vision, blob.offens]
 
 
 class Grid:
@@ -88,7 +99,6 @@ class Blob:
     curiosity: float  # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
     collab: float #0-1 parameter that establishes how likely will share its energy with other blobs with similar stats
 
-
     def __init__(self, x=None, y=None, energy=None, carno=None, herbo=None, speed=None, age=None, vision=None, offens=None, 
                  energy_for_babies=None, number_of_babies=None, curiosity=None, agressive=None, colab=None)->None:
             
@@ -96,17 +106,24 @@ class Blob:
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
             self.energy = random.randint(20,80) if energy is None else energy
+            self.age = random.randint(1,500) if age is None else age
+
             self.carno= random.uniform(0.1, 0.9) if carno is None else carno
             self.herbo = random.uniform(0.1, 0.9) if herbo is None else herbo
+            
             self.speed = random.uniform(0.1, 0.9) if speed is None else speed
-            self.age = random.randint(1,500) if age is None else age
             self.vision = random.uniform(0.1, 0.9) if vision is None else vision
+
             self.offens = random.uniform(0.1, 0.9) if offens is None else offens
+
             self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
             self.number_of_babies = random.uniform(0.1, 0.9) if number_of_babies is None else number_of_babies
+
             self.curiosity = random.uniform(0, 1) if curiosity is None else curiosity
             self.agressive = random.uniform(0, 1) if agressive is None else agressive
             self.colab = random.uniform(0, 1) if colab is None else colab
+
+            self.fav_meal = [random.uniform(0, 1) for _ in range(5)]
 
     def compute_next_move(self, grid:'Grid')->tuple[int,int]: 
         """Compute a factor which determines how Self will move"""
