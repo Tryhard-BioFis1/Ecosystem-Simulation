@@ -193,7 +193,7 @@ class Blob:
 
     def fight(self, blob:'Blob', eat_thresh:float = 0.00)->None:
         """Self and a Blob fight and the result is updated"""
-        if self.energy>0 and blob.energy>0: # check if both are alive
+        if self.energy>0 and blob.energy>0 and self!=blob: # check if both are alive
             
             self_as_blob_favmeal = witch(array_dist(self.anatomy(), blob.fav_meal))
             blob_as_self_favmeal = witch(array_dist(blob.anatomy(), self.fav_meal)) 
