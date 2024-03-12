@@ -119,7 +119,7 @@ class Blob:
             self.vision = random.uniform(0.1, 0.9) if vision is None else vision
             
             self.offens = random.uniform(0.1, 0.9) if offens is None else offens
-            self.defens = 1-self.offens
+            self.defens = random.uniform(0.1, 0.9) if defens is None else defens
             
             self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
             self.number_of_babies = random.uniform(0.1, 0.9) if number_of_babies is None else number_of_babies
