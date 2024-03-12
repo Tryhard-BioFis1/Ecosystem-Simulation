@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-def noise(sigma:float=0.02)->float:
+def noise(sigma:float=0.01)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
     return np.random.normal(scale=sigma)
 
@@ -22,15 +22,15 @@ def mod_dist(a:int, b:int, n:int)->int:
     return -dst
 
 def array_dist(array1, array2, p=2):
+    """Calculates the p-norm between input vectors"""
     if len(array1) != len(array2):
         raise ValueError("Arrays must have the same length")
-    
     powered_diff_sum = sum(abs(x - y) ** p for x, y in zip(array1, array2))
     return powered_diff_sum ** (1/p)
 
 def witch(x:float)->float:
-    """Compute the Witch of Agnesi of the given input, i.e. f(x)=2/(1+x^2)"""
-    return 2/(1+x*x)
+    """Compute the Witch of Agnesi of the given input, i.e. f(x)=1/(1+x^2)"""
+    return 1/(1+x*x)
 
 class Grid:
     """Consists in the grid where blobs move and interact"""
@@ -90,15 +90,15 @@ class Blob:
     
     age: int        # ** the current age of the blob 
     
-    offens : float
-    defens : float                                                                # EEECCCXXX
+    offens : float  # 0-1 how likely could eat a blob
+    defens : float  # 0-1 how likely could survive a attack of a predator
     
-    energy_for_babies: float # 0-1 parameter that indicates the number of babies
-    number_of_babies: float # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
+    energy_for_babies: float # 0-1 indicates how much energy each baby will have
+    number_of_babies: float # 0-1 indicates the number of babies that they will have
     
     curios: float  # 0-1 parameter that establishes the probability of moving randomly in case there are no reasons for doing it
-    agress: float  # 0-1 __-__-__-__-__
-    collab: float #0-1 parameter that establishes how likely will share its energy with other blobs with similar stats
+    agress: float  # 0-1 weight that regulates how likely is to stalk another blob
+    colab: float #0-1 parameter that establishes how likely will share its energy with other blobs with similar stats
     skin: tuple[int,int,int]    # (0-255,0-255,0-255) color that blob will have and babies will inherit
     
     fav_meal: list[float] # Array with independent values used as parameters for blob comparison
@@ -119,7 +119,7 @@ class Blob:
             self.vision = random.uniform(0.1, 0.9) if vision is None else vision
             
             self.offens = random.uniform(0.1, 0.9) if offens is None else offens
-            self.defens = random.uniform(0.1, 0.9) if defens is None else defens
+            self.defens = 1-self.offens
             
             self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
             self.number_of_babies = random.uniform(0.1, 0.9) if number_of_babies is None else number_of_babies
@@ -129,7 +129,7 @@ class Blob:
             self.colab = random.uniform(0, 1) if colab is None else colab
             self.skin = skin 
             
-            self.fav_meal = [random.uniform(0, 1) for _ in range(6)] if fav_meal is None else fav_meal
+            self.fav_meal = [pow(self.carno,1)*random.uniform(0, 1) for _ in range(6)] if fav_meal is None else fav_meal
 
 
     def get_skin(self)->tuple[int,int,int]:
@@ -153,16 +153,16 @@ class Blob:
         for k in range(1, int(1 + self.vision//0.3)):
             for blobi in grid.get_neighbours_dist(self.x, self.y, k):
 
-                if abs( self.agress*witch(array_dist(self.anatomy(), blobi.fav_meal)) - blobi.agress*witch(array_dist(blobi.anatomy(), self.fav_meal)) ) > 0.1: #peligro
-                    if self.agress*witch(array_dist(self.anatomy(), blobi.fav_meal)) > blobi.agress*witch(array_dist(blobi.anatomy(), self.fav_meal)) : 
-                        dx_prop += 2*mod_dist(self.x, blobi.x, grid.dim)/k
-                        dy_prop += 2*mod_dist(self.y, blobi.y, grid.dim)/k
+                if abs( blobi.agress*witch(array_dist(self.anatomy(), blobi.fav_meal)) - self.agress*witch(array_dist(blobi.anatomy(), self.fav_meal)) ) > 0.1: #peligro
+                    if blobi.agress*witch(array_dist(self.anatomy(), blobi.fav_meal)) > self.agress*witch(array_dist(blobi.anatomy(), self.fav_meal)) : 
+                        dx_prop += 4*mod_dist(self.x, blobi.x, grid.dim)/k
+                        dy_prop += 4*mod_dist(self.y, blobi.y, grid.dim)/k
                     else: 
-                        dx_prop -= 2*mod_dist(self.x, blobi.x, grid.dim)/k
-                        dy_prop -= 2*mod_dist(self.y, blobi.y, grid.dim)/k
+                        dx_prop -= 4*mod_dist(self.x, blobi.x, grid.dim)/k
+                        dy_prop -= 4*mod_dist(self.y, blobi.y, grid.dim)/k
                 else: # amigos
-                    dx_prop -= 1*blobi.herbo*mod_dist(self.x,blobi.x,grid.dim)/k
-                    dy_prop -= 1*blobi.herbo*mod_dist(self.y,blobi.y,grid.dim)/k
+                    dx_prop -= blobi.herbo*mod_dist(self.x,blobi.x,grid.dim)/k 
+                    dy_prop -= blobi.herbo*mod_dist(self.y,blobi.y,grid.dim)/k
 
         abs_prop = np.sqrt(dx_prop*dx_prop+dy_prop*dy_prop) 
 
@@ -191,21 +191,22 @@ class Blob:
                 self.y = (self.y + dy) % grid.dim
                 self.energy -= movement_energy
 
-    def fight(self, blob:'Blob', easy_eat:float =0.1)->None:
-        """Self and a Blob fight and the result if updated"""
+    def fight(self, blob:'Blob', eat_thresh:float = 0.00)->None:
+        """Self and a Blob fight and the result is updated"""
         if self.energy>0 and blob.energy>0: # check if both are alive
             
             self_as_blob_favmeal = witch(array_dist(self.anatomy(), blob.fav_meal))
             blob_as_self_favmeal = witch(array_dist(blob.anatomy(), self.fav_meal)) 
             
             # Could be blobeatsself + selfeatsblob be zero and raise a c
-            if (self.offens < 1e-2 and blob.offens < 1e-2): return
-            if random.random() < self_as_blob_favmeal*self.offens/(self_as_blob_favmeal*blob.offens + blob_as_self_favmeal*self.offens) :       #blob eats self
-                if blob.offens - self.defens > easy_eat:
+            if (blob.offens + self.offens)*random.random() < blob.offens : 
+            # if (self_as_blob_favmeal*blob.offens + blob_as_self_favmeal*self.offens)*random.random() < self_as_blob_favmeal*blob.offens :       #blob eats self
+            # if random.random() < 0.5:
+                if blob.offens - self.defens > eat_thresh:
                         blob.energy += self.energy * blob.carno * self_as_blob_favmeal # Podria haber una constante
                         self.energy = -100
             else:       # self eats blob 
-                if self.offens - self.defens > easy_eat:
+                if self.offens - blob.defens > eat_thresh:
                         self.energy += blob.energy * self.carno*blob_as_self_favmeal
                         blob.energy = -100
 
@@ -220,7 +221,7 @@ class Blob:
         self.age +=1
 
         for blobi in grid.get_neighbours_dist(self.x, self.y, 1):
-            if blobi.energy > 0 and array_dist(blobi.anatomy(), self.anatomy()) < 0.05 and blobi.energy < self.energy:
+            if blobi.energy > 0 and array_dist(blobi.anatomy(), self.anatomy()) < 0.01 and blobi.energy < self.energy:
                 # si es necesario implementar que se pierde energia en el intercambio
                 transfer = self.colab * (self.energy-blobi.energy)
                 self.energy -= transfer
@@ -241,7 +242,7 @@ class Blob:
         for _ in range(babies_num):
             babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/babies_num, carno=compress(self.carno+noise()), 
                     herbo=compress(self.herbo+noise()), speed=compress(self.speed+noise()), age=1, 
-                    vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), defens = compress(self.offens + noise()), 
+                    vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), defens = compress(self.defens + noise()), 
                     energy_for_babies=compress(self.energy_for_babies+noise()), number_of_babies=compress(self.number_of_babies+noise()), 
                     curiosity=compress(self.curiosity+noise()), agress=compress(self.agress+noise()), colab=compress(self.colab+noise()),
                     skin=self.skin, fav_meal= [compress(stat + noise()) for stat in self.fav_meal]))
@@ -260,9 +261,9 @@ from sklearn.decomposition import PCA
 # from ECmethods import Blob, Grid, compress
 
 # Parameters of simulation
-SCREEN_WIDTH = 300
-SCREEN_HEIGHT = 300
-CELL_SIZE = 5
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 800
+CELL_SIZE = 8
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
@@ -367,7 +368,7 @@ print("""[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing Manual
 while running:
     t_start_iter = time.time()
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or blobs==[]:
+        if event.type == pygame.QUIT or blobs==[] :
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -391,7 +392,7 @@ while running:
         clock_tick -=2   
         if clock_tick < 0: clock_tick=1
     
-    elif keys[pygame.K_a] and delay_print>30:
+    elif keys[pygame.K_a] and delay_print>clock_tick//100:
         delay_print = 0
         mouse_pos = pygame.mouse.get_pos()
         blobs_at_tile = grid.blobs_at_tile(mouse_pos[0]//CELL_SIZE, mouse_pos[1]//CELL_SIZE)
@@ -526,14 +527,15 @@ ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
 ax3 = fig.add_subplot(2,3,4, projection='3d')
-ax3.scatter([blob.carno for blob in blobs], [blob.herbo for blob in blobs], [blob.speed for blob in blobs], s=5, alpha=0.5)
-ax3.scatter([blob.fav_meal[0] for blob in blobs], [blob.fav_meal[1] for blob in blobs], [blob.fav_meal[2] for blob in blobs], s=5, alpha=0.5, color='red')
+ax3.scatter([blob.offens for blob in blobs], [blob.defens for blob in blobs], [blob.carno for blob in blobs], c=[blob.herbo for blob in blobs], s=5, alpha=0.5)
+# ax3.scatter([blob.fav_meal[4] for blob in blobs], [blob.fav_meal[5] for blob in blobs], [blob.fav_meal[2] for blob in blobs], c='red', s=5, alpha=0.5)
 ax3.set_xlim(0,1)
 ax3.set_ylim(0,1)
 ax3.set_zlim(0,1)
-ax3.set_xlabel("carno")
-ax3.set_ylabel("herbo")
-ax3.set_zlabel("speed")
+ax3.set_xlabel("offens")
+ax3.set_ylabel("defens")
+ax3.set_zlabel("carno")
+# ax3.quiver([blob.carno for blob in blobs], [blob.vision for blob in blobs], [blob.speed for blob in blobs], [blob.fav_meal[0] for blob in blobs], [blob.fav_meal[3] for blob in blobs], [blob.fav_meal[2] for blob in blobs], length=0.1, normalize=True)
 
 ax4 = fig.add_subplot(2,3,5, projection='3d')
 ax4.plot([avg_std[0] for avg_std in herbo_stat], [avg_std[0] for avg_std in carno_stat], [avg_std[0] for avg_std in offens_stat])
