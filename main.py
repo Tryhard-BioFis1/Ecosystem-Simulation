@@ -197,17 +197,24 @@ class Blob:
             
             self_as_blob_favmeal = witch(array_dist(self.anatomy(), blob.fav_meal))
             blob_as_self_favmeal = witch(array_dist(blob.anatomy(), self.fav_meal)) 
+
+            # What if they do not want to fight??
+            # We should implement another function based in how likely is that they decide to fight. 
+            # Therefore, the violent interaction would take place only when at least one of them wants to.
+            # The following is just a basic implementation using the agress parameter
+            
+            if random.random() > self.agress and random.random() > blob.agress: return
             
             # Could be blobeatsself + selfeatsblob be zero and raise a c
             if (blob.offens + self.offens)*random.random() < blob.offens : 
             # if (self_as_blob_favmeal*blob.offens + blob_as_self_favmeal*self.offens)*random.random() < self_as_blob_favmeal*blob.offens :       #blob eats self
             # if random.random() < 0.5:
-                if blob.offens - self.defens > eat_thresh:
+                if random.random()*(blob.offens+self.defens) < blob.offens:
                         blob.energy += self.energy * blob.carno * self_as_blob_favmeal # Podria haber una constante
                         self.energy = -100
             else:       # self eats blob 
-                if self.offens - blob.defens > eat_thresh:
-                        self.energy += blob.energy * self.carno*blob_as_self_favmeal
+                if random.random()*(self.offens+blob.defens) < self.offens:
+                        self.energy += blob.energy * self.carno * blob_as_self_favmeal
                         blob.energy = -100
 
     def vital(self, grid:'Grid', metabo:float = 0.1)->None:
