@@ -1,9 +1,9 @@
 import numpy as np
 import random
 
-def noise(sigma:float=0.01)->float:
+def noise()->float:
     """Encapsulates the generation of a random number with triangular distribution"""
-    return np.random.normal(scale=sigma)
+    return np.random.normal(scale=gen_var)
 
 def compress(a:float, max_lim:float=1)->float:
     """
@@ -110,7 +110,7 @@ class Blob:
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
             self.energy = random.randint(20,80) if energy is None else energy
-            self.age = random.randint(1,500) if age is None else age
+            self.age = random.randint(1,maxage) if age is None else age
 
             self.carno= random.uniform(0.1, 0.9) if carno is None else carno
             self.herbo = random.uniform(0.1, 0.9) if herbo is None else herbo
@@ -224,7 +224,7 @@ class Blob:
         """
         if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            self.energy += 1
+            self.energy += herbogain
         self.age +=1
 
         for blobi in grid.get_neighbours_dist(self.x, self.y, 1):
@@ -238,7 +238,10 @@ class Blob:
 
     def is_alive(self)->None:
         """Checks if blob remains alive or is already dead"""
-        return self.energy > 0 and self.age < 300
+        if self.energy < -90: deaths[0] += 1  #died from depredation
+        elif self.energy <= 0: deaths[1] += 1  #died from starvation
+        elif self.age >= maxage: deaths[2] += 1 #died because of age
+        return self.energy > 0 and self.age < maxage  
     
     def reproduce(self, giving_birth_cost=1.2)->list['Blob']:
         """If blob pass a energy threshold, a new Blob is born with some mutations"""
@@ -270,7 +273,7 @@ from sklearn.decomposition import PCA
 # Parameters of simulation
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
-CELL_SIZE = 8
+CELL_SIZE = 10
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
@@ -278,12 +281,16 @@ PATTERN_BOOL = False
 iteration_count = 0
 count_num_baby = 0
 delay_print = 0
+deaths = [0, 0, 0]
 # Colors
 BACKGR= (255, 255, 250)
 
 # Tuneable parameters / characteristics of blobs
 metabolism = 0.1
 energy_to_reproduce = 60
+maxage = 150
+herbogain = 1
+gen_var = 0.05
 
 # Statistics 
 popu_stat = []
@@ -398,7 +405,12 @@ while running:
     elif keys[pygame.K_j]: 
         clock_tick -=2   
         if clock_tick < 0: clock_tick=1
-    
+    elif keys[pygame.K_m] and keys[pygame.K_UP]: metabolism += 0.01
+    elif keys[pygame.K_m] and keys[pygame.K_DOWN]: metabolism -= 0.01
+    elif keys[pygame.K_h] and keys[pygame.K_UP]: herbogain += 0.01
+    elif keys[pygame.K_h] and keys[pygame.K_DOWN]: herbogain -= 0.01
+    elif keys[pygame.K_g] and keys[pygame.K_UP]: gen_var += 0.01
+    elif keys[pygame.K_g] and keys[pygame.K_DOWN]: gen_var -= 0.01
     elif keys[pygame.K_a] and delay_print>clock_tick//100:
         delay_print = 0
         mouse_pos = pygame.mouse.get_pos()
@@ -503,12 +515,12 @@ pygame.quit()
 # Show final statistics
 fig = plt.figure(figsize=(15,8))
 
-ax0 = fig.add_subplot(2,3,1)
+ax0 = fig.add_subplot(2,4,1)
 ax0.plot([i+1 for i in range(len(popu_stat))], popu_stat)
 ax0.set_xlabel("time (index)")
 ax0.set_ylabel("Alive population")
 
-ax1 = fig.add_subplot(2,3,2)
+ax1 = fig.add_subplot(2,4,2)
 ax1.errorbar(x=[i+1 for i in range(len(speed_stat))], y=[avg_std[0] for avg_std in speed_stat],
               yerr=[avg_std[1] for avg_std in speed_stat], fmt='o', linewidth=1, capsize=5, color='orange', 
               errorevery=max(1,len(popu_stat)//25), label = 'speed' )
@@ -528,12 +540,12 @@ ax1.set_xlabel("time (index)")
 ax1.set_ylabel("Averadge stat with std as error bars")
 ax1.legend()
 
-ax2 = fig.add_subplot(2,3,3)
+ax2 = fig.add_subplot(2,4,3)
 ax2.plot([i for i in range(len(time_per_iter_))], time_per_iter_)
 ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
-ax3 = fig.add_subplot(2,3,4, projection='3d')
+ax3 = fig.add_subplot(2,4,4, projection='3d')
 ax3.scatter([blob.offens for blob in blobs], [blob.defens for blob in blobs], [blob.carno for blob in blobs], c=[blob.herbo for blob in blobs], s=5, alpha=0.5)
 # ax3.scatter([blob.fav_meal[4] for blob in blobs], [blob.fav_meal[5] for blob in blobs], [blob.fav_meal[2] for blob in blobs], c='red', s=5, alpha=0.5)
 ax3.set_xlim(0,1)
@@ -544,15 +556,20 @@ ax3.set_ylabel("defens")
 ax3.set_zlabel("carno")
 # ax3.quiver([blob.carno for blob in blobs], [blob.vision for blob in blobs], [blob.speed for blob in blobs], [blob.fav_meal[0] for blob in blobs], [blob.fav_meal[3] for blob in blobs], [blob.fav_meal[2] for blob in blobs], length=0.1, normalize=True)
 
-ax4 = fig.add_subplot(2,3,5, projection='3d')
+ax4 = fig.add_subplot(2,4,5, projection='3d')
 ax4.plot([avg_std[0] for avg_std in herbo_stat], [avg_std[0] for avg_std in carno_stat], [avg_std[0] for avg_std in offens_stat])
 ax4.set_xlabel("herbo")
 ax4.set_ylabel("carno")
 ax4.set_zlabel("offens")
 
-ax5 = fig.add_subplot(2,3,6)
+ax5 = fig.add_subplot(2,4,6)
 ax5.hist2d([blob.number_of_babies for blob in blobs], [blob.energy_for_babies for blob in blobs], bins=20)
 ax5.set_xlabel("number_of_babies")
 ax5.set_ylabel("energy_for_babies")
+
+ax6 = fig.add_subplot(2, 4, 7)
+ax6.plot(deaths, marker='s')
+
+print(deaths)
 
 plt.show()
