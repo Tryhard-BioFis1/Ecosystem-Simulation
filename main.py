@@ -1,9 +1,10 @@
 import numpy as np
 import random
 
-def noise()->float:
+def noise(sigma:float=0.01)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
-    return np.random.normal(scale=gen_var)
+    if sigma < 0 : sigma=0
+    return np.random.normal(scale=sigma)
 
 def compress(a:float, max_lim:float=1)->float:
     """
@@ -110,7 +111,7 @@ class Blob:
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
             self.energy = random.randint(20,80) if energy is None else energy
-            self.age = random.randint(1,maxage) if age is None else age
+            self.age = random.randint(1,500) if age is None else age
 
             self.carno= random.uniform(0.1, 0.9) if carno is None else carno
             self.herbo = random.uniform(0.1, 0.9) if herbo is None else herbo
@@ -129,7 +130,7 @@ class Blob:
             self.colab = random.uniform(0, 1) if colab is None else colab
             self.skin = skin 
             
-            self.fav_meal = [pow(self.carno,1)*random.uniform(0, 1) for _ in range(6)] if fav_meal is None else fav_meal
+            self.fav_meal = [random.uniform(0, 1) for _ in range(6)] if fav_meal is None else fav_meal
 
 
     def get_skin(self)->tuple[int,int,int]:
@@ -191,40 +192,32 @@ class Blob:
                 self.y = (self.y + dy) % grid.dim
                 self.energy -= movement_energy
 
-    def fight(self, blob:'Blob', eat_thresh:float = 0.00)->None:
+    def fight(self, blob:'Blob')->None:
         """Self and a Blob fight and the result is updated"""
-        if self.energy>0 and blob.energy>0 and self!=blob: # check if both are alive
-            
-            self_as_blob_favmeal = witch(array_dist(self.anatomy(), blob.fav_meal))
-            blob_as_self_favmeal = witch(array_dist(blob.anatomy(), self.fav_meal)) 
+        if self.energy>0 and blob.energy>0 and self!=blob and (random.random() < self.agress or random.random() < blob.agress): # check if both are alive
 
-            # What if they do not want to fight??
-            # We should implement another function based in how likely is that they decide to fight. 
-            # Therefore, the violent interaction would take place only when at least one of them wants to.
-            # The following is just a basic implementation using the agress parameter
-            
-            if random.random() > self.agress and random.random() > blob.agress: return
-            
-            # Could be blobeatsself + selfeatsblob be zero and raise a c
-            if (blob.offens + self.offens)*random.random() < blob.offens : 
-            # if (self_as_blob_favmeal*blob.offens + blob_as_self_favmeal*self.offens)*random.random() < self_as_blob_favmeal*blob.offens :       #blob eats self
-            # if random.random() < 0.5:
-                if random.random()*(blob.offens+self.defens) < blob.offens:
-                        blob.energy += self.energy * blob.carno * self_as_blob_favmeal # Podria haber una constante
+                # What if they do not want to fight??
+                # We should implement another function based in how likely is that they decide to fight. 
+                # Therefore, the violent interaction would take place only when at least one of them wants to.
+                # The following is just a basic implementation using the agress parameter
+            if (blob.offens + self.offens)*random.random() < blob.offens :  # blob eats self
+                if (blob.offens + self.defens)*random.random() < blob.offens:
+                        blob.energy += self.energy * blob.carno * witch(array_dist(self.anatomy(), blob.fav_meal))
                         self.energy = -100
+            
             else:       # self eats blob 
-                if random.random()*(self.offens+blob.defens) < self.offens:
-                        self.energy += blob.energy * self.carno * blob_as_self_favmeal
+                if (self.offens + blob.defens)*random.random() < self.offens:
+                        self.energy += blob.energy * self.carno * witch(array_dist(blob.anatomy(), self.fav_meal)) 
                         blob.energy = -100
 
-    def vital(self, grid:'Grid', metabo:float = 0.1)->None:
+    def vital(self, grid:'Grid', metabo:float = 0.1, herboGain = 1)->None:
         """
             Blob gains energy from surrondings with probability based on herbo level
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.herbo/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            self.energy += herbogain
+            self.energy += herboGain
         self.age +=1
 
         for blobi in grid.get_neighbours_dist(self.x, self.y, 1):
@@ -236,26 +229,23 @@ class Blob:
         
         self.energy -= metabo*( sum(self.anatomy())/len(self.anatomy()) )
 
-    def is_alive(self)->None:
+    def is_alive(self, maxAge=300)->None:
         """Checks if blob remains alive or is already dead"""
-        if self.energy < -90: deaths[0] += 1  #died from depredation
-        elif self.energy <= 0: deaths[1] += 1  #died from starvation
-        elif self.age >= maxage: deaths[2] += 1 #died because of age
-        return self.energy > 0 and self.age < maxage  
+        return self.energy > 0 and self.age < maxAge
     
-    def reproduce(self, giving_birth_cost=1.2)->list['Blob']:
+    def reproduce(self, giving_birth_cost=1.2, geneticVar = 0.01)->list['Blob']:
         """If blob pass a energy threshold, a new Blob is born with some mutations"""
         babies_energy = self.energy * self.energy_for_babies
         self.energy -= babies_energy*giving_birth_cost
         babies = []
         babies_num = int(self.number_of_babies//0.15)
         for _ in range(babies_num):
-            babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/babies_num, carno=compress(self.carno+noise()), 
-                    herbo=compress(self.herbo+noise()), speed=compress(self.speed+noise()), age=1, 
-                    vision=compress(self.vision + noise()), offens=compress(self.offens + noise()), defens = compress(self.defens + noise()), 
-                    energy_for_babies=compress(self.energy_for_babies+noise()), number_of_babies=compress(self.number_of_babies+noise()), 
-                    curiosity=compress(self.curiosity+noise()), agress=compress(self.agress+noise()), colab=compress(self.colab+noise()),
-                    skin=self.skin, fav_meal= [compress(stat + noise()) for stat in self.fav_meal]))
+            babies.append(Blob(self.x+random.randint(-1, 1), self.y+random.randint(-1, 1), energy= babies_energy/babies_num, carno=compress(self.carno+noise(geneticVar)), 
+                    herbo=compress(self.herbo+noise(geneticVar)), speed=compress(self.speed+noise(geneticVar)), age=1, 
+                    vision=compress(self.vision + noise(geneticVar)), offens=compress(self.offens + noise(geneticVar)), defens = compress(self.defens + noise(geneticVar)), 
+                    energy_for_babies=compress(self.energy_for_babies+noise(geneticVar)), number_of_babies=compress(self.number_of_babies+noise(geneticVar)), 
+                    curiosity=compress(self.curiosity+noise(geneticVar)), agress=compress(self.agress+noise(geneticVar)), colab=compress(self.colab+noise(geneticVar)),
+                    skin=self.skin, fav_meal= [compress(stat + noise(geneticVar)) for stat in self.fav_meal]))
 
         return babies
 
@@ -273,24 +263,22 @@ from sklearn.decomposition import PCA
 # Parameters of simulation
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
-CELL_SIZE = 10
+CELL_SIZE = 8
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
 # Counters
 iteration_count = 0
 count_num_baby = 0
-delay_print = 0
-deaths = [0, 0, 0]
 # Colors
 BACKGR= (255, 255, 250)
 
 # Tuneable parameters / characteristics of blobs
 metabolism = 0.1
 energy_to_reproduce = 60
-maxage = 150
-herbogain = 1
-gen_var = 0.05
+herbogain = 1 # <<<<<
+maxage = 150 # <<<<<
+gen_var = 0.05 # <<<<<
 
 # Statistics 
 popu_stat = []
@@ -300,6 +288,7 @@ carno_stat = []
 vision_stat = []
 offens_stat = []
 time_per_iter_ = []
+deaths = [0, 0, 0]
 
 # Initialize Pygame and set up the screen
 pygame.init()
@@ -336,6 +325,7 @@ paused = False
 clock = pygame.time.Clock()
 clock_tick = 300
 select_array = []
+last_print_time = time.time()
 
 def be_a_god(Grid, region, action)->None:
     """Execute actions over selected blobs as specified in user manual"""
@@ -365,6 +355,9 @@ def be_a_god(Grid, region, action)->None:
         elif action == 'e': 
             for blob in blob_list: blob.energy = -100
 
+    else: print("[\033[1;32;40m ECS \033[00m]\033[1;31;40m ERROR \033[00m: Given action not executable with selection square")
+
+
 print("""[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing Manual
       \033[4m ESY interactive chat for Ecosystem-Simulation \033[00m
 
@@ -381,45 +374,60 @@ print("""[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing Manual
 
 while running:
     t_start_iter = time.time()
+    # TAP JUST ONCE
     for event in pygame.event.get():
         if event.type == pygame.QUIT or blobs==[] :
             running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                running = False
-            elif event.key == pygame.K_k:
-                paused = not paused
-            elif event.key == pygame.K_s:
-                if len(select_array) < 2:
-                    select_array.append(pygame.mouse.get_pos())
-                else: select_array[1] = pygame.mouse.get_pos()
-            elif len(select_array) == 2 and event.key != pygame.K_s:
-                be_a_god(grid, select_array, pygame.key.name(event.key))
-                select_array = []
-            elif len(select_array) ==1 and event.key != pygame.K_s:
-                print("[\033[1;32;40m ECS \033[00m]\033[1;31;40m ERROR \033[00m: Selection square is not defind to execute an action")
-                select_array = []
+        elif event.type == pygame.KEYDOWN: 
+            match event.key :
+                case pygame.K_ESCAPE:
+                    running = False
+                case pygame.K_k:
+                    paused = not paused
 
+                case pygame.K_s:
+                    if len(select_array) < 2:
+                        select_array.append(pygame.mouse.get_pos())
+                    else: select_array[1] = pygame.mouse.get_pos()
+
+                case x if x!=pygame.K_s and len(select_array)!=0:
+                    if len(select_array) == 2 :
+                        be_a_god(grid, select_array, pygame.key.name(event.key))
+                        select_array = []
+                    elif len(select_array) ==1 :
+                        print("[\033[1;32;40m ECS \033[00m]\033[1;31;40m ERROR \033[00m: Selection square is not defind to execute an action")
+                        select_array = []
+
+                case pygame.K_a:
+                    mouse_pos = pygame.mouse.get_pos()
+                    blobs_at_tile = grid.blobs_at_tile(mouse_pos[0]//CELL_SIZE, mouse_pos[1]//CELL_SIZE)
+                    if blobs_at_tile:
+                        print(f"[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing features of {blobs_at_tile[0]}")
+                        blobs_at_tile[0].show_features()
+                    else: print("[\033[1;32;40m ECS \033[00m]\033[1;31;40m ERROR \033[00m: No blob identified ")
+                
+
+    # KEEP PRESSING
     keys = pygame.key.get_pressed()
     if keys[pygame.K_l]: clock_tick +=2
     elif keys[pygame.K_j]: 
         clock_tick -=2   
         if clock_tick < 0: clock_tick=1
+
     elif keys[pygame.K_m] and keys[pygame.K_UP]: metabolism += 0.01
-    elif keys[pygame.K_m] and keys[pygame.K_DOWN]: metabolism -= 0.01
-    elif keys[pygame.K_h] and keys[pygame.K_UP]: herbogain += 0.01
-    elif keys[pygame.K_h] and keys[pygame.K_DOWN]: herbogain -= 0.01
-    elif keys[pygame.K_g] and keys[pygame.K_UP]: gen_var += 0.01
-    elif keys[pygame.K_g] and keys[pygame.K_DOWN]: gen_var -= 0.01
-    elif keys[pygame.K_a] and delay_print>clock_tick//100:
-        delay_print = 0
-        mouse_pos = pygame.mouse.get_pos()
-        blobs_at_tile = grid.blobs_at_tile(mouse_pos[0]//CELL_SIZE, mouse_pos[1]//CELL_SIZE)
-        if blobs_at_tile:
-            print(f"[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing features of {blobs_at_tile[0]}")
-            blobs_at_tile[0].show_features()
-        else: print("[\033[1;32;40m ECS \033[00m]\033[1;31;40m ERROR \033[00m: No blob identified ")
-    delay_print+=1
+    elif keys[pygame.K_m] and keys[pygame.K_DOWN]: 
+        metabolism -= 0.01
+        if metabolism < 0: metabolism=0
+
+    elif keys[pygame.K_h] and keys[pygame.K_UP]: herbogain += 0.002
+    elif keys[pygame.K_h] and keys[pygame.K_DOWN]: 
+        herbogain -= 0.01
+        if herbogain < 0: herbogain=0
+
+    elif keys[pygame.K_g] and keys[pygame.K_UP]: gen_var += 0.002
+    elif keys[pygame.K_g] and keys[pygame.K_DOWN]: 
+        gen_var -= 0.01
+        if gen_var < 0: gen_var=0
 
     if not paused:
 
@@ -437,7 +445,7 @@ while running:
         # Let blobs gain energy form the enviroment 
         time_vital = time.time()
         for blob in blobs:
-            blob.vital(grid, metabolism)
+            blob.vital(grid, metabolism, herbogain)
         # print("vital: ", time.time() - time_vital, end=' ')
 
         # time_carno = time.time()
@@ -453,25 +461,20 @@ while running:
         # Let the blobs feed and check if they may reproduce
         for blob in blobs:
             if blob.energy > 0 and blob.energy >= energy_to_reproduce:
-                babies = blob.reproduce()
+                babies = blob.reproduce(geneticVar=gen_var)
                 blobs.extend(babies)
                 count_num_baby += len(babies)
         # print("rpro: ", time.time() - time_repro, end=' ')
 
         # time_remove = time.time()
         # Remove dead blobs
-        blobs = [blob for blob in blobs if blob.is_alive()]
+        blobs = [blob for blob in blobs if blob.is_alive(maxage)]
         # print("remove: ", time.time() - time_remove, end=' ')
 
                 # Refresh the grid to the last update
         time_update = time.time()
         grid.update(blobs)
         # print("update: ", time.time() - time_update, end=' ')
-
-        # Draw blobs
-        screen.fill(BACKGR)
-        for blob in blobs:
-            pygame.draw.rect(screen, blob.get_skin(), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
             
         # Display iteration's statistics and Store data to create the final graphics
         popu_stat.append(len(blobs))
@@ -485,7 +488,6 @@ while running:
         carno_stat.append((np.mean(act_carno_lst), np.std(act_carno_lst)))
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
         offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
-
         
         # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
         # print(f"Babies: {count_num_baby}, ", end='')
@@ -499,10 +501,15 @@ while running:
         # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
         # print(f"clock_tick set to: {clock_tick}", end='')
         # print()
-        
+    
 
         iteration_count += 1
         time_per_iter_.append(time.time()-t_start_iter)
+
+        # Draw blobs
+    screen.fill(BACKGR)
+    for blob in blobs:
+        pygame.draw.rect(screen, blob.get_skin(), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     pygame.display.flip()
     clock.tick(clock_tick)  # Adjust the speed of the simulation by changing the argument
@@ -515,12 +522,12 @@ pygame.quit()
 # Show final statistics
 fig = plt.figure(figsize=(15,8))
 
-ax0 = fig.add_subplot(2,4,1)
+ax0 = fig.add_subplot(2,3,1)
 ax0.plot([i+1 for i in range(len(popu_stat))], popu_stat)
 ax0.set_xlabel("time (index)")
 ax0.set_ylabel("Alive population")
 
-ax1 = fig.add_subplot(2,4,2)
+ax1 = fig.add_subplot(2,3,2)
 ax1.errorbar(x=[i+1 for i in range(len(speed_stat))], y=[avg_std[0] for avg_std in speed_stat],
               yerr=[avg_std[1] for avg_std in speed_stat], fmt='o', linewidth=1, capsize=5, color='orange', 
               errorevery=max(1,len(popu_stat)//25), label = 'speed' )
@@ -540,12 +547,12 @@ ax1.set_xlabel("time (index)")
 ax1.set_ylabel("Averadge stat with std as error bars")
 ax1.legend()
 
-ax2 = fig.add_subplot(2,4,3)
+ax2 = fig.add_subplot(2,3,3)
 ax2.plot([i for i in range(len(time_per_iter_))], time_per_iter_)
 ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
-ax3 = fig.add_subplot(2,4,4, projection='3d')
+ax3 = fig.add_subplot(2,3,4, projection='3d')
 ax3.scatter([blob.offens for blob in blobs], [blob.defens for blob in blobs], [blob.carno for blob in blobs], c=[blob.herbo for blob in blobs], s=5, alpha=0.5)
 # ax3.scatter([blob.fav_meal[4] for blob in blobs], [blob.fav_meal[5] for blob in blobs], [blob.fav_meal[2] for blob in blobs], c='red', s=5, alpha=0.5)
 ax3.set_xlim(0,1)
@@ -556,20 +563,15 @@ ax3.set_ylabel("defens")
 ax3.set_zlabel("carno")
 # ax3.quiver([blob.carno for blob in blobs], [blob.vision for blob in blobs], [blob.speed for blob in blobs], [blob.fav_meal[0] for blob in blobs], [blob.fav_meal[3] for blob in blobs], [blob.fav_meal[2] for blob in blobs], length=0.1, normalize=True)
 
-ax4 = fig.add_subplot(2,4,5, projection='3d')
+ax4 = fig.add_subplot(2,3,5, projection='3d')
 ax4.plot([avg_std[0] for avg_std in herbo_stat], [avg_std[0] for avg_std in carno_stat], [avg_std[0] for avg_std in offens_stat])
 ax4.set_xlabel("herbo")
 ax4.set_ylabel("carno")
 ax4.set_zlabel("offens")
 
-ax5 = fig.add_subplot(2,4,6)
+ax5 = fig.add_subplot(2,3,6)
 ax5.hist2d([blob.number_of_babies for blob in blobs], [blob.energy_for_babies for blob in blobs], bins=20)
 ax5.set_xlabel("number_of_babies")
 ax5.set_ylabel("energy_for_babies")
-
-ax6 = fig.add_subplot(2, 4, 7)
-ax6.plot(deaths, marker='s')
-
-print(deaths)
 
 plt.show()
