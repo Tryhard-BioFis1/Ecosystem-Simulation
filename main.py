@@ -3,16 +3,15 @@ import random
 
 def noise(sigma:float=0.01)->float:
     """Encapsulates the generation of a random number with triangular distribution"""
-    if sigma < 0 : sigma=0
     return np.random.normal(scale=sigma)
 
-def compress(a:float, max_lim:float=1)->float:
+def compress(a:float, max_lim:float=1.0)->float:
     """
     Given a float 'a', if overpass the limits 0 (lower limit) or 'max_lim' 
     return the overpassed limit, else return 'a'
     """
     if a>max_lim: return max_lim
-    if a<0: return 0
+    if a<0: return 0.0
     return a
 
 def mod_dist(a:int, b:int, n:int)->int:
@@ -22,7 +21,7 @@ def mod_dist(a:int, b:int, n:int)->int:
     if (a_+dst)%n == b_ : return dst
     return -dst
 
-def array_dist(array1, array2, p=2):
+def array_dist(array1:list[float], array2:list[float], p:int=2):
     """Calculates the p-norm between input vectors"""
     if len(array1) != len(array2):
         raise ValueError("Arrays must have the same length")
@@ -49,12 +48,12 @@ class Grid:
                 self.dic[(blob.x%self.dim, blob.y%self.dim)] = [blob]
 
     def blobs_at_tile(self, c_x:int, c_y:int)->list['Grid']:
-        """Returns list with blobs at given tile"""
+        """Returns a list with blobs at given tile"""
         if (c_x%self.dim, c_y%self.dim) not in self.dic: return []
         else: return self.dic[(c_x%self.dim, c_y%self.dim)]
 
     def get_neighbours_dist(self, c_x:int, c_y:int, vrad:int)->list['Blob']:
-        """Returns the neighbours of tile (c_x,c_y) at certain distance of vrad"""
+        """Returns a list with blobs at the neighbouring tiles of (c_x,c_y) at certain distance of vrad"""
         neighbours = []
         if vrad == 0: return self.dic[(c_x%self.dim, c_y%self.dim)]
 
@@ -69,7 +68,7 @@ class Grid:
         return neighbours
 
     def update(self, blob_list:list['Blob'])->None:
-        """Update sel.dic because the blobs have moved"""
+        """Update sel.dic because the blobs may have moved"""
         self.dic = {}
         for blob in blob_list:
             if (blob.x%self.dim, blob.y%self.dim) in self.dic:
@@ -81,15 +80,15 @@ class Grid:
 class Blob:
     x : int         # horizontal position 
     y : int         # vertical position
-    energy : int    # 0-100 amount of energy stored 
+    energy : float    # 0-100 amount of energy stored 
     
     carno : float   # 0-1 how many energy gets from feeding from preys
     herbo : float   # 0-1 how many energy gets from the surroundings
     
-    speed : float   # 0-1 in averadge how many tiles moves per iteration
+    speed : float   # 0-1 in average how many tiles moves per iteration
     vision : float  # 0-1 divided by 0.15 is the how far it sees
     
-    age: int        # ** the current age of the blob 
+    age: float        # ** the current age of the blob 
     
     offens : float  # 0-1 how likely could eat a blob
     defens : float  # 0-1 how likely could survive a attack of a predator
@@ -110,8 +109,8 @@ class Blob:
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
-            self.energy = random.randint(20,80) if energy is None else energy
-            self.age = random.randint(1,500) if age is None else age
+            self.energy = random.uniform(20,80) if energy is None else energy
+            self.age = random.uniform(1,500) if age is None else age
 
             self.carno= random.uniform(0.1, 0.9) if carno is None else carno
             self.herbo = random.uniform(0.1, 0.9) if herbo is None else herbo
@@ -147,10 +146,9 @@ class Blob:
         """Return list with physical features of Self"""
         return [self.carno, self.herbo, self.speed, self.vision, self.offens, self.defens]
 
-
     def compute_next_move(self, grid:'Grid')->tuple[int,int]: 
         """Compute a factor which determines how Self will move"""
-        dx_prop , dy_prop = 0,0
+        dx_prop , dy_prop = 0.0, 0.0
         for k in range(1, int(1 + self.vision//0.3)):
             for blobi in grid.get_neighbours_dist(self.x, self.y, k):
 
@@ -180,7 +178,7 @@ class Blob:
 
         return dx, dy
 
-    def move(self, grid, movement_energy=0.5)->None:
+    def move(self, grid:'Grid', movement_energy:float=0.5)->None:
         """Update the position of Self"""
         if random.random() < self.speed: 
 
@@ -210,7 +208,7 @@ class Blob:
                         self.energy += blob.energy * self.carno * witch(array_dist(blob.anatomy(), self.fav_meal)) 
                         blob.energy = -100
 
-    def vital(self, grid:'Grid', metabo:float = 0.1, herboGain = 1)->None:
+    def vital(self, grid:'Grid', metabo:float = 0.1, herboGain:float = 1.0)->None:
         """
             Blob gains energy from surrondings with probability based on herbo level
             If multiple blobs are in the same tile the energy is distributed among them
@@ -228,15 +226,15 @@ class Blob:
                 blobi.energy += transfer
         
         self.energy -= metabo*( sum(self.anatomy())/len(self.anatomy()) )
-
-    def is_alive(self, death_cause_list, maxAge=300)->None:
+    
+    def is_alive(self, death_cause_list:list[int], maxAge=300)->None: 
         """Checks if blob remains alive or is already dead"""
         if self.energy < -90: death_cause_list[0] += 1  #died from depredation
         elif self.energy <= 0: death_cause_list[1] += 1  #died from starvation
         elif self.age >= maxAge: death_cause_list[2] += 1 #died because of age
         return self.energy > 0 and self.age < maxAge  
     
-    def reproduce(self, giving_birth_cost=1.2, geneticVar = 0.01)->list['Blob']:
+    def reproduce(self, giving_birth_cost:float=1.2, geneticVar:float=0.01)->list['Blob']:
         """If blob pass a energy threshold, a new Blob is born with some mutations"""
         babies_energy = self.energy * self.energy_for_babies
         self.energy -= babies_energy*giving_birth_cost
@@ -252,21 +250,17 @@ class Blob:
 
         return babies
 
-
-
-
 import pygame
 import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-from sklearn.decomposition import PCA
-# from ECmethods import Blob, Grid, compress
+from ECmethods import Blob, Grid
 
 # Parameters of simulation
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 800
-CELL_SIZE = 8
+CELL_SIZE = 4
 # To initialize blobs
 START_BLOB_NUM = 500
 PATTERN_BOOL = False
@@ -279,9 +273,9 @@ BACKGR= (255, 255, 250)
 # Tuneable parameters / characteristics of blobs
 metabolism = 0.1
 energy_to_reproduce = 60
-herbogain = 1 # <<<<<
-maxage = 300 # <<<<<
-gen_var = 0.01 # <<<<<
+herbogain = 1 
+maxage = 300 
+gen_var = 0.01 
 
 # Statistics 
 popu_stat = []
@@ -292,6 +286,7 @@ vision_stat = []
 offens_stat = []
 time_per_iter_ = []
 deaths_stat = [0, 0, 0]
+veloci_stat = []
 
 # Initialize Pygame and set up the screen
 pygame.init()
@@ -379,7 +374,7 @@ while running:
     t_start_iter = time.time()
     # TAP JUST ONCE
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or blobs==[] :
+        if event.type == pygame.QUIT or blobs==[]:
             running = False
         elif event.type == pygame.KEYDOWN: 
             match event.key :
@@ -433,51 +428,37 @@ while running:
         if gen_var < 0: gen_var=0
 
     if not paused:
-
+        
         # Let blobs move / Update each blob position
-        time_move = time.time()
         for blob in blobs:
             blob.move(grid)
-        # print("move: ", time.time() - time_move, end=' ')
         
         # Update the grid with the new positions
-        # time_update = time.time()
         grid.update(blobs)
-        # print("update: ", time.time() - time_update, end=' ')
 
         # Let blobs gain energy form the enviroment 
-        time_vital = time.time()
         for blob in blobs:
             blob.vital(grid, metabolism, herbogain)
-        # print("vital: ", time.time() - time_vital, end=' ')
 
-        # time_carno = time.time()
-        # Let blobs depredate each other
+            # Let blobs depredate each other
         for blob in blobs:
             if blob.energy > 0:
                 neighbours = grid.blobs_at_tile(blob.x, blob.y)
                 for neig in neighbours:
                     blob.fight(neig)
-        # print("carno: ", time.time() - time_carno, end=' ')
 
-        # time_repro = time.time()
-        # Let the blobs feed and check if they may reproduce
+            # Let the blobs feed and check if they may reproduce
         for blob in blobs:
             if blob.energy > 0 and blob.energy >= energy_to_reproduce:
                 babies = blob.reproduce(geneticVar=gen_var)
                 blobs.extend(babies)
                 count_num_baby += len(babies)
-        # print("rpro: ", time.time() - time_repro, end=' ')
 
-        # time_remove = time.time()
-        # Remove dead blobs
+            # Remove dead blobs
         blobs = [blob for blob in blobs if blob.is_alive(deaths_stat, maxage)]
-        # print("remove: ", time.time() - time_remove, end=' ')
 
-                # Refresh the grid to the last update
-        time_update = time.time()
+            # Refresh the grid to the last update
         grid.update(blobs)
-        # print("update: ", time.time() - time_update, end=' ')
             
         # Display iteration's statistics and Store data to create the final graphics
         popu_stat.append(len(blobs))
@@ -491,7 +472,8 @@ while running:
         carno_stat.append((np.mean(act_carno_lst), np.std(act_carno_lst)))
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
         offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
-        
+        if len(popu_stat)!=1: veloci_stat.append( (popu_stat[-1]-popu_stat[-2])/popu_stat[-1] )
+
         # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
         # print(f"Babies: {count_num_baby}, ", end='')
         # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
@@ -580,5 +562,44 @@ ax5.set_ylabel("energy_for_babies")
 ax6 = fig.add_subplot(2, 4, 7)
 ax6.plot(deaths_stat, marker='s')
 
+ax7 = fig.add_subplot(2,4,8)
+ax7.plot([i+1 for i in range(len(veloci_stat))], veloci_stat)
+ax7.set_xlabel("time (index)")
+ax7.set_ylabel("Specific velocity of growth")
 
 plt.show()
+
+
+from sklearn.decomposition import PCA
+from sklearn.cluster import DBSCAN
+
+data_matrix = [blob.anatomy() for blob in blobs]
+pca = PCA(n_components=4) # max 6 components
+trans_data = pca.fit_transform(data_matrix)
+
+db = DBSCAN(eps=0.05, min_samples=40, metric='manhattan').fit(trans_data)
+labels = db.labels_
+
+# Number of clusters in labels, ignoring noise if present.
+n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+n_noise_ = list(labels).count(-1)
+
+print("Estimated number of clusters: %d" % n_clusters_)
+print("Estimated number of noise points: %d" % n_noise_)
+
+unique_labels = set(labels)
+core_samples_mask = np.zeros_like(labels, dtype=bool)
+core_samples_mask[db.core_sample_indices_] = True
+
+colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
+
+fig = plt.figure(figsize=(10,6))
+ax1 = fig.add_subplot(1,1,1, projection='3d')
+for k, col in zip(unique_labels, colors):
+    if k == -1: # Black used for noise.
+        col = [0, 0, 0, 1]
+    class_member_mask = labels == k
+    xy = trans_data[class_member_mask & core_samples_mask]
+    ax1.scatter(xy[:, 0], xy[:, 1], xy[:, 2], c=tuple(col))
+plt.show()
+
