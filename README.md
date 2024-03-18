@@ -71,7 +71,7 @@ The simulation is executed using Pygame, a Python library for creating interacti
 
 ## Parameters and Tuning
 
-The simulation offers tunable parameters such as metabolism rate, energy thresholds for reproduction, genetic variability, and herbivore gain. These parameters allow for experimentation and observation of their impact on ecosystem dynamics.
+The simulation offers tunable parameters such as metabolism rate, energy thresholds for reproduction, genetic variability, and herbivore gain. These parameters allow for experimentation and observation of their impact on ecosystem dynamics.Furthermore, these can be updated while the simulation is running, giving the possibility of understanding and studying real-time consequences of changing conditions.
 
 ## Statistical Analysis and Visualization
 
