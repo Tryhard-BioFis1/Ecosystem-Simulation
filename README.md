@@ -30,7 +30,7 @@ In Blob World, each blob is characterized by a set of parameters that influence 
 - **vision**: Determines the blob's visual range, with the actual range calculated as vision divided by 0.15 (0-1 scale).
 
 #### 5. Age
-- **age**: Represents the current age of the blob.
+- **age**: Represents the current age of the blob. At a certain maximum age, the blob will die.
 
 #### 6. Combat Abilities
 - **offens**: Reflects the likelihood of the blob successfully capturing and consuming other blobs (0-1 scale).
@@ -42,7 +42,7 @@ In Blob World, each blob is characterized by a set of parameters that influence 
 
 #### 8. Behavioral Traits
 - **curios**: Establishes the probability of the blob moving randomly when there are no specific reasons for movement (0-1 scale).
-- **agress**: Represents the likelihood of the blob stalking or pursuing other blobs (0-1 scale).
+- **agress**: Represents the likelihood of the blob stalking or pursuing other blobs even with bad combat conditions (0-1 scale).
 - **colab**: Determines how likely the blob is to share its energy with other blobs with similar characteristics (0-1 scale).
 
 #### 9. Appearance
@@ -51,7 +51,7 @@ In Blob World, each blob is characterized by a set of parameters that influence 
 #### 10. Preferences
 - **fav_meal**: An array of independent values used as parameters for comparing blobs based on their preferred meals.
 
-These parameters collectively shape the behavior, survival, and interactions of blobs within Blob World. Fine-tuning these parameters can lead to diverse and dynamic ecosystems within the simulation.
+These parameters collectively shape the behavior, survival, and interactions of blobs. Fine-tuning these parameters can lead to diverse and dynamic ecosystems within the simulation.
 
 
 ### Grid Class
