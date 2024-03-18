@@ -3,8 +3,8 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-from ECmethods import Blob, Grid
-from ECplots import diversity
+from methods import Blob, Grid
+from plots import diversity
 
 # Parameters of simulation
 SCREEN_WIDTH = 800
