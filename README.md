@@ -24,8 +24,8 @@ In Blob World, each blob is characterized by a set of parameters that influence 
 - **energy**: Indicates the amount of energy stored in the blob, ranging from 0 to 100.
 
 #### 3. Feeding Preferences
-- **carno**: Specifies how much energy the blob gains from feeding on prey (0-1 scale).
-- **herbo**: Indicates how much energy the blob gains from the surroundings (0-1 scale).
+- **phago**: Specifies how much energy the blob gains from feeding on prey (0-1 scale).
+- **phyto**: Indicates how much energy the blob gains from the surroundings (0-1 scale).
 
 #### 4. Movement
 - **speed**: Represents the average speed of the blob as it moves across the environment (0-1 scale).
