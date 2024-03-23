@@ -1,5 +1,7 @@
 # Ecosystem Simulation Study
 
+![LogoESS (1)](https://github.com/Tryhard-BioFis1/Ecosystem-Simulation/assets/157886495/6285b064-86d7-47a6-bbfe-78a0bf63a966)
+
 This project simulates an ecosystem using Python, where various entities called "blobs" interact within a grid environment. The simulation model incorporates factors such as movement, predation, reproduction, and adaptation among the blobs.
 
 ## Code Overview
