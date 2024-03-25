@@ -3,7 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-from methods import Blob, Grid, Grass
+from methods import Blob, Grid, Soil
 from plots import diversity
 
 # Parameters of simulation
@@ -66,7 +66,7 @@ else: blobs = [Blob(random.randint(0, SCREEN_WIDTH // CELL_SIZE-1), random.randi
 
 # Initialize needed objects
 grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
-grass = Grass(SCREEN_WIDTH//CELL_SIZE)
+soil = Soil(SCREEN_WIDTH//CELL_SIZE)
 
 # Main loop
 running = True
@@ -189,12 +189,12 @@ while running:
 
         # Let blobs gain energy form the enviroment 
         for blob in blobs:
-            blob.vital(grass, grid, metabolism, phytogain)
+            blob.vital(soil, grid, metabolism, phytogain)
 
             # Let blobs depredate each other
-        grass.update()  #Let grass update after being eaten
-        grass.grow()   #Let grass grow
-        grass.update()  #Let grass update after growing
+        soil.update()  #Let soil update after being eaten
+        soil.grow()   #Let soil grow
+        soil.update()  #Let soil update after growing
 
 
 
@@ -260,7 +260,7 @@ while running:
 
 pygame.quit()
 
-print(grass.grass)
+print(soil.soil)
 
 
 
