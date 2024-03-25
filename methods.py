@@ -32,29 +32,29 @@ def witch(x:float)->float:
     """Compute the Witch of Agnesi of the given input, i.e. f(x)=1/(1+x^2)"""
     return 1/(1+x*x)
 
-class Grass:
+class Soil:
     def __init__(self, dim: int) -> None:
         self.dim = dim
-        self.grass = np.full((dim, dim, 2), 0.5)  # Initialize grass with new and old values
+        self.soil = np.full((dim, dim, 2), 0.5)  # Initialize soil with new and old values
 
     def get_value(self, x: int, y: int) -> tuple:
-        """Returns the grass tuple (new value, old value) at given coordinates (x, y)"""
+        """Returns the soil tuple (new value, old value) at given coordinates (x, y)"""
         x = x % self.dim
         y = y % self.dim
-        return self.grass[x, y]
+        return self.soil[x, y]
 
     def set_value(self, x: int, y: int, new_value: float) -> None:
-        """Sets the new value of grass at given coordinates (x, y)"""
+        """Sets the new value of soil at given coordinates (x, y)"""
         x = x % self.dim
         y = y % self.dim
-        self.grass[x, y, 0] = new_value  # Set the new value in the first layer
+        self.soil[x, y, 0] = new_value  # Set the new value in the first layer
 
     def update(self) -> None:
-        """Update the old value of grass with the new value"""
-        self.grass[:, :, 1] = self.grass[:, :, 0]
+        """Update the old value of soil with the new value"""
+        self.soil[:, :, 1] = self.soil[:, :, 0]
 
     def grow(self, growth_rate: float = 0.01) -> None:
-        """Update the new value of grass based on the sum of its and its neighbors' old values"""
+        """Update the new value of soil based on the sum of its and its neighbors' old values"""
         for i in range(self.dim):
             for j in range(self.dim):
                 sum_neighbors = (
@@ -245,15 +245,15 @@ class Blob:
                         self.energy += blob.energy * self.phago * witch(array_dist(blob.anatomy(), self.fav_meal)) 
                         blob.energy = -100
 
-    def vital(self, grass: 'Grass', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.0)->None:
+    def vital(self, soil: 'soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.0)->None:
         """
             Blob gains energy from surrondings with probability based on phyto level
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            self.energy += phytoGain*grass.get_value(self.x, self.y)[1]
-            grass.set_value(self.x, self.y, max(0, grass.get_value(self.x, self.y)[0] - 0.3*self.phyto))
+            self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
+            soil.set_value(self.x, self.y, max(0, soil.get_value(self.x, self.y)[0] - 0.3*self.phyto))
 
         self.age +=1
 
