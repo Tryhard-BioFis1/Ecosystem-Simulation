@@ -132,6 +132,7 @@ while running:
                 case pygame.K_ESCAPE:
                     running = False
                 case pygame.K_k:
+                    if not paused: print(iteration_count)
                     paused = not paused
 
                 case pygame.K_s:
@@ -192,12 +193,6 @@ while running:
             blob.vital(soil, grid, metabolism, phytogain)
 
             # Let blobs depredate each other
-        soil.update()  #Let soil update after being eaten
-        soil.grow()   #Let soil grow
-        soil.update()  #Let soil update after growing
-
-
-
         for blob in blobs:
             if blob.energy > 0:
                 neighbours = grid.blobs_at_tile(blob.x, blob.y)
@@ -212,10 +207,14 @@ while running:
                 count_num_baby += len(babies)
 
             # Remove dead blobs
-        blobs = [blob for blob in blobs if blob.is_alive(deaths_stat, maxage)]
+        blobs = [blob for blob in blobs if blob.is_alive(deaths_stat, maxage, soil)]
 
             # Refresh the grid to the last update
         grid.update(blobs)
+
+        soil.update()  #Let soil update after being eaten
+        soil.difusion()   #Let soil difusion
+        soil.update()  #Let soil update after difusioning
             
         # Display iteration's statistics and Store data to create the final graphics
         popu_stat.append(len(blobs))
@@ -325,6 +324,6 @@ ax6.plot(deaths_stat, marker='s')
 ax7 = fig.add_subplot(2,4,8)
 ax7.plot(range(len(entropy_stat)), entropy_stat, c='g')
 ax7.set_xlabel("time (index)")
-ax7.set_ylabel("Specific velocity of growth")
+ax7.set_ylabel("Specific velocity of difusion")
 
 plt.show()
