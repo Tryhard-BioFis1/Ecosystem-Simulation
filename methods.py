@@ -53,18 +53,18 @@ class Soil:
         """Update the old value of soil with the new value"""
         self.soil[:, :, 1] = self.soil[:, :, 0]
 
-    def grow(self, growth_rate: float = 0.01) -> None:
+    def difusion(self, difusion_rate: float = 0.01) -> None:
         """Update the new value of soil based on the sum of its and its neighbors' old values"""
         for i in range(self.dim):
             for j in range(self.dim):
                 sum_neighbors = (
-                    self.get_value(i, j)[1] +
+                    15*self.get_value(i, j)[1] +
                     self.get_value(i - 1, j)[1] +
                     self.get_value(i + 1, j)[1] +
                     self.get_value(i, j - 1)[1] +
                     self.get_value(i, j + 1)[1]
                 )
-                new_value = min(1, max(0, self.get_value(i, j)[0] + growth_rate * sum_neighbors))
+                new_value = sum_neighbors/19
                 self.set_value(i, j, new_value)
 
 
@@ -239,23 +239,25 @@ class Blob:
                 if (blob.offens + self.defens)*random.random() < blob.offens:
                         blob.energy += self.energy * blob.phago * witch(array_dist(self.anatomy(), blob.fav_meal))
                         self.energy = -100
+                        
             
             else:       # self eats blob 
                 if (self.offens + blob.defens)*random.random() < self.offens:
                         self.energy += blob.energy * self.phago * witch(array_dist(blob.anatomy(), self.fav_meal)) 
                         blob.energy = -100
 
-    def vital(self, soil: 'soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.0)->None:
+
+    def vital(self, soil: 'Soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.0)->None:
         """
             Blob gains energy from surrondings with probability based on phyto level
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
-            soil.set_value(self.x, self.y, max(0, soil.get_value(self.x, self.y)[0] - 0.3*self.phyto))
+            self.energy += 1.8*phytoGain*soil.get_value(self.x, self.y)[1]
+            soil.set_value(self.x, self.y, max(0, soil.get_value(self.x, self.y)[1] - 0.05*self.phyto))
 
-        self.age +=1
+        self.age += 1
 
         for blobi in grid.get_neighbours_dist(self.x, self.y, 1):
             if blobi.energy > 0 and array_dist(blobi.anatomy(), self.anatomy()) < 0.01 and blobi.energy < self.energy:
@@ -266,11 +268,13 @@ class Blob:
         
         self.energy -= metabo*( sum(self.anatomy())/len(self.anatomy()) )
     
-    def is_alive(self, death_cause_list:list[int], maxAge=300)->None: 
+    def is_alive(self, death_cause_list:list[int], maxAge=300, soil="I do not understand")->None: 
         """Checks if blob remains alive or is already dead"""
         if self.energy < -90: death_cause_list[0] += 1  #died from depredation
         elif self.energy <= 0: death_cause_list[1] += 1  #died from starvation
         elif self.age >= maxAge: death_cause_list[2] += 1 #died because of age
+        
+        if self.energy <= 0 or self.age >= maxAge: soil.set_value(self.x, self.y, 3*(1/len(self.anatomy()))*sum(k for k in self.anatomy()))  #Implementación pobre
         return self.energy > 0 and self.age < maxAge  
     
     def reproduce(self, giving_birth_cost:float=1.2, geneticVar:float=0.01)->list['Blob']:
