@@ -3,8 +3,8 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-from methods import Blob, Grid, Soil
-from plots import diversity
+from methods import Blob, Grid, Soil, compress
+# from plots import diversity
 
 # Parameters of simulation
 SCREEN_WIDTH = 800
@@ -229,7 +229,7 @@ while running:
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
         offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
         if len(popu_stat)!=1: veloci_stat.append( (popu_stat[-1]-popu_stat[-2])/popu_stat[-1] )
-        entropy_stat.append( diversity(blobs) )
+        # entropy_stat.append( diversity(blobs) )
 
         # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
         # print(f"Babies: {count_num_baby}, ", end='')
@@ -250,6 +250,10 @@ while running:
 
         # Draw blobs
     screen.fill(BACKGR)
+    for i in range(grid.dim):
+        for j in range(grid.dim):
+            pygame.draw.rect(screen, (0,0,compress(255*soil.get_value(i,j)[0],255)), (i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
     for blob in blobs:
         pygame.draw.rect(screen, blob.get_skin(), (blob.x * CELL_SIZE, blob.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
@@ -258,9 +262,6 @@ while running:
 
 
 pygame.quit()
-
-print(soil.soil)
-
 
 
 # Show final statistics
@@ -321,9 +322,9 @@ ax5.set_ylabel("energy_for_babies")
 ax6 = fig.add_subplot(2, 4, 7)
 ax6.plot(deaths_stat, marker='s')
 
-ax7 = fig.add_subplot(2,4,8)
-ax7.plot(range(len(entropy_stat)), entropy_stat, c='g')
-ax7.set_xlabel("time (index)")
-ax7.set_ylabel("Specific velocity of difusion")
+# ax7 = fig.add_subplot(2,4,8)
+# ax7.plot(range(len(entropy_stat)), entropy_stat, c='g')
+# ax7.set_xlabel("time (index)")
+# ax7.set_ylabel("Shanon Entropy as Diversity")
 
 plt.show()
