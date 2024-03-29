@@ -178,6 +178,14 @@ class Blob:
     def anatomy(self)->list[float]:
         """Return list with physical features of Self"""
         return [self.phago, self.phyto, self.speed, self.vision, self.offens, self.defens]
+    
+    def psycho(self)->list[float]:
+        """Return list with psychological features of Self"""
+        return [self.curios, self.agress, self.colab]
+    
+    def reprod(self)->list[float]:
+        """Return list with reproductive features of Self"""
+        return [self.energy_for_babies, self.number_of_babies]
 
     def compute_next_move(self, grid:'Grid')->tuple[int,int]: 
         """Compute a factor which determines how Self will move"""
@@ -243,14 +251,15 @@ class Blob:
                         blob.energy = -100
 
 
-    def vital(self, soil: 'Soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.7)->None:
+    def vital(self, soil: 'Soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1)->None:
         """
             Blob gains energy from surrondings with probability based on phyto level
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
+            # self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
+            self.energy += phytoGain
             soil.refresh_value(self.x, self.y, - 0.05*self.phyto)
 
         self.age += 1
