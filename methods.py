@@ -32,42 +32,46 @@ def witch(x:float)->float:
     """Compute the Witch of Agnesi of the given input, i.e. f(x)=1/(1+x^2)"""
     return 1/(1+x*x)
 
-
 class Soil:
     def __init__(self, dim: int) -> None:
         self.dim = dim
         self.soil = np.full((dim, dim, 2), 0.5)  # Initialize soil with new and old values
 
-    def get_value(self, x: int, y: int) -> tuple[int,int]:
+    def get_value(self, x: int, y: int) -> tuple:
         """Returns the soil tuple (new value, old value) at given coordinates (x, y)"""
-        return self.soil[x % self.dim, y % self.dim]
+        x = x % self.dim
+        y = y % self.dim
+        return self.soil[x, y]
 
     def set_value(self, x: int, y: int, new_value: float) -> None:
         """Sets the new value of soil at given coordinates (x, y)"""
-        self.soil[x % self.dim, y % self.dim, 0] = new_value  # Set the new value in the first layer
-    
-    def refresh_value(self, x: int, y: int, change:float) -> None:
-        """Updates a value of soil at given coordinates (x,y) by given change"""
-        self.set_value(x, y, compress(self.get_value(x, y)[1] +change) )
+        x = x % self.dim
+        y = y % self.dim
+        self.soil[x, y, 0] = new_value  # Set the new value in the first layer
 
-    def update_soil(self) -> None:
+    def update(self) -> None:
         """Update the old value of soil with the new value"""
         self.soil[:, :, 1] = self.soil[:, :, 0]
 
-    def difusion(self, difusion_rate: float = 0.02) -> None:
+    def difusion(self, difusion_rate: float = 0.01) -> None:
         """Update the new value of soil based on the sum of its and its neighbors' old values"""
         for i in range(self.dim):
             for j in range(self.dim):
-                sum_neighbors = (1-difusion_rate)*self.get_value(i, j)[1] + \
-                    sum( (difusion_rate/9)*self.get_value(i+a, j+b)[1] for a in range(-1,2) for b in range(-1,2) )
-                
-                self.set_value(i, j, sum_neighbors)
+                sum_neighbors = (
+                    15*self.get_value(i, j)[1] +
+                    self.get_value(i - 1, j)[1] +
+                    self.get_value(i + 1, j)[1] +
+                    self.get_value(i, j - 1)[1] +
+                    self.get_value(i, j + 1)[1]
+                )
+                new_value = sum_neighbors/19
+                self.set_value(i, j, new_value)
 
 
 class Grid:
     """Consists in the grid where blobs move and interact"""
     dim : int   # lenght of grids side -> Grid has dim*dim shape
-    dic : dict[tuple[int,int],list['Blob']]  # dictionary which stores the blobs, keys are tuple (x,y) of non empty tiles
+    dic : dict  # dictionary which stores the blobs, keys are tuple (x,y) of non empty tiles
                 #   and values list with those blobs which are at that position
 
     def __init__(self, blob_list:list['Blob'], dim:int)->None:
@@ -80,14 +84,14 @@ class Grid:
             else: 
                 self.dic[(blob.x%self.dim, blob.y%self.dim)] = [blob]
 
-    def blobs_at_tile(self, c_x:int, c_y:int)->list['Blob']:
+    def blobs_at_tile(self, c_x:int, c_y:int)->list['Grid']:
         """Returns a list with blobs at given tile"""
         if (c_x%self.dim, c_y%self.dim) not in self.dic: return []
         else: return self.dic[(c_x%self.dim, c_y%self.dim)]
 
     def get_neighbours_dist(self, c_x:int, c_y:int, vrad:int)->list['Blob']:
         """Returns a list with blobs at the neighbouring tiles of (c_x,c_y) at certain distance of vrad"""
-        neighbours:list['Blob'] = []
+        neighbours = []
         if vrad == 0: return self.dic[(c_x%self.dim, c_y%self.dim)]
 
         for j in range(c_y - vrad, c_y + 1 + vrad):
@@ -100,7 +104,7 @@ class Grid:
 
         return neighbours
 
-    def update_grid(self, blob_list:list['Blob'])->None:
+    def update(self, blob_list:list['Blob'])->None:
         """Update sel.dic because the blobs may have moved"""
         self.dic = {}
         for blob in blob_list:
@@ -137,8 +141,8 @@ class Blob:
     fav_meal: list[float] # Array with independent values used as parameters for blob comparison
 
     def __init__(self, x=None, y=None, energy=None, phago=None, phyto=None, speed=None, age=None, vision=None, offens=None, defens=None,
-                 energy_for_babies=None, number_of_babies=None, curios=None, agress=None, colab=None, skin=None, fav_meal=None)->None:
-            
+                 energy_for_babies=None, number_of_babies=None, curiosity=None, agress=None, colab=None, skin=None, fav_meal=None)->None:
+
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
@@ -157,7 +161,7 @@ class Blob:
             self.energy_for_babies = random.uniform(0.1, 0.9) if energy_for_babies is None else energy_for_babies
             self.number_of_babies = random.uniform(0.1, 0.9) if number_of_babies is None else number_of_babies
             
-            self.curios = random.uniform(0, 1) if curios is None else curios
+            self.curiosity = random.uniform(0, 1) if curiosity is None else curiosity
             self.agress = random.uniform(0, 1) if agress is None else agress
             self.colab = random.uniform(0, 1) if colab is None else colab
             self.skin = skin 
@@ -178,14 +182,6 @@ class Blob:
     def anatomy(self)->list[float]:
         """Return list with physical features of Self"""
         return [self.phago, self.phyto, self.speed, self.vision, self.offens, self.defens]
-    
-    def psycho(self)->list[float]:
-        """Return list with psychological features of Self"""
-        return [self.curios, self.agress, self.colab]
-    
-    def reprod(self)->list[float]:
-        """Return list with reproductive features of Self"""
-        return [self.energy_for_babies, self.number_of_babies]
 
     def compute_next_move(self, grid:'Grid')->tuple[int,int]: 
         """Compute a factor which determines how Self will move"""
@@ -208,7 +204,7 @@ class Blob:
 
         dx, dy = 0, 0
         if abs_prop < 1e-6:
-            if random.random() < self.curios:
+            if random.random() < self.curiosity:
                 dx = random.randint(-1, 1)
                 dy = random.randint(-1, 1)
         else:
@@ -251,16 +247,15 @@ class Blob:
                         blob.energy = -100
 
 
-    def vital(self, soil: 'Soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1)->None:
+    def vital(self, soil: 'Soil', grid:'Grid', metabo:float = 0.1, phytoGain:float = 1.0)->None:
         """
             Blob gains energy from surrondings with probability based on phyto level
             If multiple blobs are in the same tile the energy is distributed among them
         """
         if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
                                          +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
-            # self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
-            self.energy += phytoGain
-            soil.refresh_value(self.x, self.y, - 0.05*self.phyto)
+            self.energy += phytoGain*soil.get_value(self.x, self.y)[1]
+            soil.set_value(self.x, self.y, max(0, soil.get_value(self.x, self.y)[1] - 0.05*self.phyto))
 
         self.age += 1
 
@@ -273,16 +268,14 @@ class Blob:
         
         self.energy -= metabo*( sum(self.anatomy())/len(self.anatomy()) )
     
-    def is_alive(self, death_cause_list:list[int], soil:'Soil',maxAge:int=300) -> bool: 
+    def is_alive(self, death_cause_list:list[int], maxAge=300, soil="I do not understand")->None: 
         """Checks if blob remains alive or is already dead"""
         if self.energy < -90: death_cause_list[0] += 1  #died from depredation
         elif self.energy <= 0: death_cause_list[1] += 1  #died from starvation
         elif self.age >= maxAge: death_cause_list[2] += 1 #died because of age
         
-        if self.energy <= 0 or self.age >= maxAge: 
-            soil.refresh_value(self.x, self.y, 1/len(self.anatomy())*sum(self.anatomy()))
-            return False
-        return True
+        if self.energy <= 0 or self.age >= maxAge: soil.set_value(self.x, self.y, 3*(1/len(self.anatomy()))*sum(k for k in self.anatomy()))  #Implementación pobre
+        return self.energy > 0 and self.age < maxAge  
     
     def reproduce(self, giving_birth_cost:float=1.2, geneticVar:float=0.01)->list['Blob']:
         """If blob pass a energy threshold, a new Blob is born with some mutations"""
@@ -295,8 +288,7 @@ class Blob:
                     phyto=compress(self.phyto+noise(geneticVar)), speed=compress(self.speed+noise(geneticVar)), age=1, 
                     vision=compress(self.vision + noise(geneticVar)), offens=compress(self.offens + noise(geneticVar)), defens = compress(self.defens + noise(geneticVar)), 
                     energy_for_babies=compress(self.energy_for_babies+noise(geneticVar)), number_of_babies=compress(self.number_of_babies+noise(geneticVar)), 
-                    curios=compress(self.curios+noise(geneticVar)), agress=compress(self.agress+noise(geneticVar)), colab=compress(self.colab+noise(geneticVar)),
+                    curiosity=compress(self.curiosity+noise(geneticVar)), agress=compress(self.agress+noise(geneticVar)), colab=compress(self.colab+noise(geneticVar)),
                     skin=self.skin, fav_meal= [compress(stat + noise(geneticVar)) for stat in self.fav_meal]))
 
         return babies
- 
