@@ -3,7 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import time 
-from methods import Blob, Grid, Soil
+from methods import Blob, Grid
 from plots import diversity
 
 # Parameters of simulation
@@ -42,12 +42,8 @@ def get_species_parameters(num_species):
         phyto = float(input(f"Enter the phyto value for species {i + 1} (0-1): "))
         speed = float(input(f"Enter the speed value for species {i + 1} (0-1): "))
         vision = float(input(f"Enter the vision value for species {i + 1} (0-1): "))
-        offens = float(input(f"Enter the offens value for species {i + 1} (0-1): "))
-        defens = float(input(f"Enter the defens value for species {i + 1} (0-1): "))
         energy_for_babies = float(input(f"Enter the amount of energy given to babies for species {i + 1} (0-1): "))
         number_of_babies = float(input(f"Enter the number_of_babies value for species {i + 1} (0-1): "))
-        curiosity = float(input(f"Enter the curiosity value for species {i + 1} (0-1): "))
-        agress = float(input(f"Enter the agress value for species {i + 1} (0-1): "))
         colab = float(input(f"Enter the colab value for species {i + 1} (0-1): "))
 
         species_parameters.append({
@@ -56,12 +52,8 @@ def get_species_parameters(num_species):
             "phyto": phyto,
             "speed": speed,
             "vision": vision,
-            "offens": offens,
-            "defens": defens,
             "energy_for_babies": energy_for_babies,
             "number_of_babies": number_of_babies,
-            "curiosity": curiosity,
-            "agress": agress,
             "colab": colab
         })
 
@@ -101,7 +93,6 @@ speed_stat = []
 phyto_stat = []
 phago_stat = []
 vision_stat = []
-offens_stat = []
 time_per_iter_ = []
 deaths_stat = [0, 0, 0]
 veloci_stat = []
@@ -136,13 +127,14 @@ else:
     blobs = []
     for species in species_info:
         for i in range(species["num_ind"]):
-            blobs.append(Blob(x= random.randint(0, SCREEN_WIDTH // CELL_SIZE-1), y=random.randint(0, SCREEN_HEIGHT // CELL_SIZE-1), energy=None, phago=species["phago"], phyto=species["phyto"], 
-                              speed= species["speed"], age=None, vision=species["vision"], offens=species["offens"], defens=species["defens"], energy_for_babies=species["energy_for_babies"],
-                              number_of_babies=species["number_of_babies"], curiosity=species["number_of_babies"], agress=species["agress"], colab=species["colab"], skin=None, fav_meal=None))
+            blobs.append(Blob(x= random.randint(0, SCREEN_WIDTH // CELL_SIZE-1), y=random.randint(0, SCREEN_HEIGHT // CELL_SIZE-1), energy=None, 
+                              phago=species["phago"], phyto=species["phyto"], 
+                              speed= species["speed"], age=None, vision=species["vision"], 
+                              energy_for_babies=species["energy_for_babies"], number_of_babies=species["number_of_babies"], 
+                              colab=species["colab"], skin=None))
 
 # Initialize needed objects
 grid = Grid(blobs, SCREEN_WIDTH//CELL_SIZE)
-soil = Soil(SCREEN_WIDTH//CELL_SIZE)
 
 # Main loop
 running = True
@@ -266,7 +258,7 @@ while running:
 
         # Let blobs gain energy form the enviroment 
         for blob in blobs:
-            blob.vital(soil, grid, metabolism, phytogain)
+            blob.vital(grid, metabolism, phytogain)
 
             # Let blobs depredate each other
         for blob in blobs:
@@ -283,14 +275,10 @@ while running:
                 count_num_baby += len(babies)
 
             # Remove dead blobs
-        blobs = [blob for blob in blobs if blob.is_alive(deaths_stat, maxage, soil)]
+        blobs = [blob for blob in blobs if blob.is_alive(deaths_stat, maxage)]
 
             # Refresh the grid to the last update
         grid.update(blobs)
-
-        soil.update()  #Let soil update after being eaten
-        soil.difusion()   #Let soil difusion
-        soil.update()  #Let soil update after difusioning
             
         # Display iteration's statistics and Store data to create the final graphics
         popu_stat.append(len(blobs))
@@ -298,17 +286,15 @@ while running:
         act_phyto_lst = [blob.phyto for blob in blobs]
         act_phago_lst = [blob.phago for blob in blobs]
         act_vision_lst = [blob.vision for blob in blobs]
-        act_offens_lst = [blob.offens for blob in blobs]
-        speed_stat.append((np.mean(act_speed_lst), np.std(act_speed_lst)))
+        speed_stat.append((np.mean(act_speed_lst), np.std(act_\speed_lst)))
         phyto_stat.append((np.mean(act_phyto_lst), np.std(act_phyto_lst)))
         phago_stat.append((np.mean(act_phago_lst), np.std(act_phago_lst)))
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
-        offens_stat.append((np.mean(act_offens_lst), np.std(act_offens_lst)))
         if len(popu_stat)!=1: veloci_stat.append( (popu_stat[-1]-popu_stat[-2])/popu_stat[-1] )
         entropy_stat.append( diversity(blobs) )
 
         # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
-        # print(f"Babies: {count_num_baby}, ", end='')
+        print(f"Babies: {count_num_baby}, ", end='')
         # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
         # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
         # print(f"Mean speed: {np.mean(act_speed_lst)},  ", end='')
@@ -335,10 +321,6 @@ while running:
 
 pygame.quit()
 
-print(soil.soil)
-
-
-
 # Show final statistics
 fig = plt.figure(figsize=(15,8))
 
@@ -360,9 +342,6 @@ ax1.errorbar(x=[i+1 for i in range(len(phago_stat))], y=[avg_std[0] for avg_std 
 ax1.errorbar(x=[i+1 for i in range(len(vision_stat))], y=[avg_std[0] for avg_std in vision_stat],
               yerr=[avg_std[1] for avg_std in vision_stat], fmt='o', linewidth=1, capsize=5, color='cyan', 
               errorevery=max(1,len(popu_stat)//25), label = 'vision' )
-ax1.errorbar(x=[i+1 for i in range(len(offens_stat))], y=[avg_std[0] for avg_std in offens_stat],
-              yerr=[avg_std[1] for avg_std in offens_stat], fmt='o', linewidth=1, capsize=5, color='purple', 
-              errorevery=max(1,len(popu_stat)//25), label = 'offens' )
 ax1.set_xlabel("time (index)")
 ax1.set_ylabel("Averadge stat with std as error bars")
 ax1.legend()
@@ -372,22 +351,12 @@ ax2.plot([i for i in range(len(time_per_iter_))], time_per_iter_)
 ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
-ax3 = fig.add_subplot(2,4,4, projection='3d')
-ax3.scatter([blob.offens for blob in blobs], [blob.defens for blob in blobs], [blob.phago for blob in blobs], c=[blob.phyto for blob in blobs], s=5, alpha=0.5)
-# ax3.scatter([blob.fav_meal[4] for blob in blobs], [blob.fav_meal[5] for blob in blobs], [blob.fav_meal[2] for blob in blobs], c='red', s=5, alpha=0.5)
-ax3.set_xlim(0,1)
-ax3.set_ylim(0,1)
-ax3.set_zlim(0,1)
-ax3.set_xlabel("offens")
-ax3.set_ylabel("defens")
-ax3.set_zlabel("phago")
-# ax3.quiver([blob.phago for blob in blobs], [blob.vision for blob in blobs], [blob.speed for blob in blobs], [blob.fav_meal[0] for blob in blobs], [blob.fav_meal[3] for blob in blobs], [blob.fav_meal[2] for blob in blobs], length=0.1, normalize=True)
 
 ax4 = fig.add_subplot(2,4,5, projection='3d')
-ax4.plot([avg_std[0] for avg_std in phyto_stat], [avg_std[0] for avg_std in phago_stat], [avg_std[0] for avg_std in offens_stat])
+ax4.plot([avg_std[0] for avg_std in phyto_stat], [avg_std[0] for avg_std in phago_stat], [avg_std[0] for avg_std in speed_stat])
 ax4.set_xlabel("phyto")
 ax4.set_ylabel("phago")
-ax4.set_zlabel("offens")
+ax4.set_zlabel("speed")
 
 ax5 = fig.add_subplot(2,4,6)
 ax5.hist2d([blob.number_of_babies for blob in blobs], [blob.energy_for_babies for blob in blobs], bins=20)
