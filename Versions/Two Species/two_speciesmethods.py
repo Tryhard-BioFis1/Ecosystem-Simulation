@@ -151,7 +151,7 @@ class Blob:
 
         dx, dy = 0, 0
         if abs_prop < 1e-6:
-            if random.random() < 0.25: #OJO, valor provisional
+            if random.random() < 0.5: #OJO, valor provisional
                 dx = random.randint(-1, 1)
                 dy = random.randint(-1, 1)
         else:
