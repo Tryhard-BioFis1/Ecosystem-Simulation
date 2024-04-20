@@ -102,8 +102,8 @@ class Blob:
             # Each variable has a predeterminate value unless one is specified 
             self.x = 0 if x is None else x
             self.y = 0 if y is None else y
-            self.energy = random.uniform(20,80) if energy is None else energy
-            self.age = random.uniform(1,500) if age is None else age
+            self.energy = random.uniform(20,40) if energy is None else energy
+            self.age = random.uniform(1,300) if age is None else age
 
             self.phago= random.uniform(0.1, 0.9) if phago is None else phago
             self.phyto = random.uniform(0.1, 0.9) if phyto is None else phyto
@@ -193,8 +193,7 @@ class Blob:
             Blob gains energy from surrondings with probability based on phyto level
             If multiple blobs are in the same tile the energy is distributed among them
         """
-        if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.2*len(grid.get_neighbours_dist(self.x, self.y, 1))
-                                         +0.05*len(grid.get_neighbours_dist(self.x, self.y, 2)) ):
+        if random.random() < self.phyto/(len(grid.blobs_at_tile(self.x, self.y))+0.3*len(grid.get_neighbours_dist(self.x, self.y, 1)) ):
             self.energy += phytoGain
         self.age += 1
 
