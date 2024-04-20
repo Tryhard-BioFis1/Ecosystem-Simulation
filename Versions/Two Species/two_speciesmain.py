@@ -20,17 +20,22 @@ count_num_baby = 0
 BACKGR= (255, 255, 250)
 
 # Tuneable parameters / characteristics of blobs
-metabolism = 0.1
+metabolism = 0.5
 energy_to_reproduce = 35
 phytogain = 1 
-maxage = 300 
+maxage = 100 
 gen_var = 0.01
 num_species = -1
 species_info = None
 
-def ask_for_personalized_values():
-    print("Do you want to choose personalized values for the simulation?")
-    choice = input("Enter 'yes' to choose personalized values, or 'no' to use default values: ").lower()
+def ask_for_nonrandom():
+    print("Do you want to choose non random values for the simulation?")
+    choice = input("Enter 'yes' to choose your own values, or 'no' to use default values: ").lower()
+    return choice == 'yes'
+
+def ask_for_two_species():
+    print("Do you want to choose predetermined two species values for the simulation?")
+    choice = input("Enter 'yes' to choose predetermined values for two species, or 'no' to use personalized values: ").lower()
     return choice == 'yes'
 
 def get_species_parameters(num_species):
@@ -59,6 +64,36 @@ def get_species_parameters(num_species):
 
     return species_parameters
 
+def set_two_species_parameters():
+    species_parameters = []
+    num_ind = int(input(f"Enter the number of individuals for phago species: "))
+
+    species_parameters.append({
+        "num_ind": num_ind,
+        "phago": 0.9,
+        "phyto": 0.1,
+        "speed": 0.5,
+        "vision": 0.6,
+        "energy_for_babies": 0.5,
+        "number_of_babies": .5,
+        "colab": 0.1
+    })
+
+    num_ind = int(input(f"Enter the number of individuals for phyto species: "))
+
+    species_parameters.append({
+        "num_ind": num_ind,
+        "phago": 0.2,
+        "phyto": 0.9,
+        "speed": .5,
+        "vision": .5,
+        "energy_for_babies": .5,
+        "number_of_babies": .5,
+        "colab": .5
+    })
+
+    return species_parameters
+
 def get_personalized_values(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info):
     num_species = int(input("Enter the starting number of species: "))
     metabolism = float(input("Enter the starting metabolism (default value: 0.1): "))
@@ -69,10 +104,22 @@ def get_personalized_values(num_species, metabolism, energy_to_reproduce, maxage
     species_info = get_species_parameters(num_species)
     return num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info
 
+def get_two_species_values(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info):
+    num_species = 2
+    metabolism = 0.5
+    energy_to_reproduce = 50
+    phytogain = 1.5
+    maxage = 150
+    gen_var = 0.01
+    species_info = set_two_species_parameters()
+    return num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info
 
 def main(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info):
-    personalized_values = ask_for_personalized_values()
-    if personalized_values:
+    nonrandom = ask_for_nonrandom()
+    if nonrandom:
+        if ask_for_two_species():
+            return get_two_species_values(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info)
+
         # You can pass the personalized values to your simulation here
         print("You have chosen personalized values for the simulation.")
         return get_personalized_values(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info)
@@ -84,10 +131,7 @@ def main(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_va
 
 num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info = main(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info)
 
-print(species_info)
-
-
-# Statistics 
+# Statistics
 popu_stat = []
 speed_stat = []
 phyto_stat = []
@@ -286,15 +330,15 @@ while running:
         act_phyto_lst = [blob.phyto for blob in blobs]
         act_phago_lst = [blob.phago for blob in blobs]
         act_vision_lst = [blob.vision for blob in blobs]
-        speed_stat.append((np.mean(act_speed_lst), np.std(act_\speed_lst)))
+        # speed_stat.append((np.mean(act_speed_lst), np.std(act_\speed_lst)))
         phyto_stat.append((np.mean(act_phyto_lst), np.std(act_phyto_lst)))
         phago_stat.append((np.mean(act_phago_lst), np.std(act_phago_lst)))
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
         if len(popu_stat)!=1: veloci_stat.append( (popu_stat[-1]-popu_stat[-2])/popu_stat[-1] )
-        entropy_stat.append( diversity(blobs) )
+        # entropy_stat.append( diversity(blobs) )
 
         # print(f"Iteration: {iteration_count},  Number of Blobs: {len(blobs)},  ", end='')
-        print(f"Babies: {count_num_baby}, ", end='')
+        # print(f"Babies: {count_num_baby}, ", end='')
         # print(f"Mean energy: {np.mean([blob.energy for blob in blobs])}, ", end='')
         # print(f"Mean age: {np.mean([blob.age for blob in blobs])}, ", end='')
         # print(f"Mean speed: {np.mean(act_speed_lst)},  ", end='')
@@ -352,11 +396,11 @@ ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
 
-ax4 = fig.add_subplot(2,4,5, projection='3d')
-ax4.plot([avg_std[0] for avg_std in phyto_stat], [avg_std[0] for avg_std in phago_stat], [avg_std[0] for avg_std in speed_stat])
-ax4.set_xlabel("phyto")
-ax4.set_ylabel("phago")
-ax4.set_zlabel("speed")
+# ax4 = fig.add_subplot(2,4,5, projection='2d')
+# ax4.plot([avg_std[0] for avg_std in phyto_stat], [avg_std[0] for avg_std in phago_stat], [avg_std[0] for avg_std in speed_stat])
+# ax4.set_xlabel("phyto")
+# ax4.set_ylabel("phago")
+# # ax4.set_zlabel("speed")
 
 ax5 = fig.add_subplot(2,4,6)
 ax5.hist2d([blob.number_of_babies for blob in blobs], [blob.energy_for_babies for blob in blobs], bins=20)
@@ -366,9 +410,9 @@ ax5.set_ylabel("energy_for_babies")
 ax6 = fig.add_subplot(2, 4, 7)
 ax6.plot(deaths_stat, marker='s')
 
-ax7 = fig.add_subplot(2,4,8)
-ax7.plot(range(len(entropy_stat)), entropy_stat, c='g')
-ax7.set_xlabel("time (index)")
-ax7.set_ylabel("Specific velocity of difusion")
+# ax7 = fig.add_subplot(2,4,8)
+# ax7.plot(range(len(entropy_stat)), entropy_stat, c='g')
+# ax7.set_xlabel("time (index)")
+# ax7.set_ylabel("Specific velocity of difusion")
 
 plt.show()
