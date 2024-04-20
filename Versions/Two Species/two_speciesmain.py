@@ -23,20 +23,21 @@ BACKGR= (255, 255, 250)
 metabolism = 0.5
 energy_to_reproduce = 35
 phytogain = 1 
-maxage = 100 
+maxage = 300   #Cuidado, hay que cambiar también el parámetro en la inicialización de Blobs 
 gen_var = 0.01
 num_species = -1
 species_info = None
+maxIter = 1500
 
 def ask_for_nonrandom():
     print("Do you want to choose non random values for the simulation?")
-    choice = input("Enter 'yes' to choose your own values, or 'no' to use default values: ").lower()
-    return choice == 'yes'
+    choice = input("Enter 'y' to choose your own values, or 'no' to use default values: ").lower()
+    return 'y' in choice
 
 def ask_for_two_species():
     print("Do you want to choose predetermined two species values for the simulation?")
-    choice = input("Enter 'yes' to choose predetermined values for two species, or 'no' to use personalized values: ").lower()
-    return choice == 'yes'
+    choice = input("Enter 'y' to choose predetermined values for two species, or 'no' to use personalized values: ").lower()
+    return 'y' in choice
 
 def get_species_parameters(num_species):
     print("Please introduce the parameters that define the genetics of each species.")
@@ -109,8 +110,8 @@ def get_two_species_values(num_species, metabolism, energy_to_reproduce, maxage,
     metabolism = 0.5
     energy_to_reproduce = 50
     phytogain = 1.5
-    maxage = 150
-    gen_var = 0.01
+    maxage = 300
+    gen_var = 0
     species_info = set_two_species_parameters()
     return num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info
 
@@ -131,12 +132,16 @@ def main(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_va
 
 num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info = main(num_species, metabolism, energy_to_reproduce, maxage, phytogain, gen_var, species_info)
 
+print(species_info)
+
 # Statistics
 popu_stat = []
 speed_stat = []
 phyto_stat = []
 phago_stat = []
 vision_stat = []
+phyto_num = []
+phago_num = []
 time_per_iter_ = []
 deaths_stat = [0, 0, 0]
 veloci_stat = []
@@ -234,6 +239,8 @@ print("""[\033[1;32;40m ECS \033[00m]\033[1;34;40m INFO \033[00m: Showing Manual
       """)
 
 while running:
+    if iteration_count >= maxIter:
+        running = False
     t_start_iter = time.time()
     # TAP JUST ONCE
     for event in pygame.event.get():
@@ -244,7 +251,13 @@ while running:
                 case pygame.K_ESCAPE:
                     running = False
                 case pygame.K_k:
-                    if not paused: print(iteration_count)
+                    if not paused: 
+                        print("iteration number: ", iteration_count)
+                        print("metabolism: ", metabolism)
+                        print("number of phyto: ", phyto_num[iteration_count-1])
+                        print("number of phago: ", phago_num[iteration_count-1])
+                        print("genetic variability: ", gen_var)
+                        print("phyto gain: ", phytogain)
                     paused = not paused
 
                 case pygame.K_s:
@@ -334,6 +347,19 @@ while running:
         phyto_stat.append((np.mean(act_phyto_lst), np.std(act_phyto_lst)))
         phago_stat.append((np.mean(act_phago_lst), np.std(act_phago_lst)))
         vision_stat.append((np.mean(act_vision_lst), np.std(act_vision_lst)))
+        phgs = 0
+        for blob in blobs:
+            if blob.phago > .5:
+                phgs += 1
+        phago_num.append(phgs)
+
+
+        phys = 0
+        for blob in blobs:
+            if blob.phyto > .5:
+                phys += 1
+        phyto_num.append(phys)
+
         if len(popu_stat)!=1: veloci_stat.append( (popu_stat[-1]-popu_stat[-2])/popu_stat[-1] )
         # entropy_stat.append( diversity(blobs) )
 
@@ -348,8 +374,6 @@ while running:
         # print(f"Mean offens: {np.mean(act_offens_lst)}, ", end='')
         # print(f"Conputation time: {time.time()-t_start_iter}, ", end='')
         # print(f"clock_tick set to: {clock_tick}", end='')
-        # print()
-    
 
         iteration_count += 1
         time_per_iter_.append(time.time()-t_start_iter)
@@ -368,10 +392,6 @@ pygame.quit()
 # Show final statistics
 fig = plt.figure(figsize=(15,8))
 
-ax0 = fig.add_subplot(2,4,1)
-ax0.plot([i+1 for i in range(len(popu_stat))], popu_stat)
-ax0.set_xlabel("time (index)")
-ax0.set_ylabel("Alive population")
 
 ax1 = fig.add_subplot(2,4,2)
 ax1.errorbar(x=[i+1 for i in range(len(speed_stat))], y=[avg_std[0] for avg_std in speed_stat],
@@ -395,6 +415,20 @@ ax2.plot([i for i in range(len(time_per_iter_))], time_per_iter_)
 ax2.set_xlabel("iteration number")
 ax2.set_ylabel("Duration in seg per iteration")
 
+ax3 = fig.add_subplot(2, 4, 1)
+ax3.plot([i for i in range(len(phago_num))], phago_num, color = "red")
+ax3.plot([i for i in range(len(phyto_num))], phyto_num, color= "green")
+ax3.set_xlabel("iteration number")
+ax3.set_ylabel("Populations")
+
+
+ax4 = fig.add_subplot(2,4,5)
+ax4.plot(phago_num, phyto_num)
+ax4.set_xlabel("phago")
+ax4.set_ylabel("phyto")
+
+
+
 
 # ax4 = fig.add_subplot(2,4,5, projection='2d')
 # ax4.plot([avg_std[0] for avg_std in phyto_stat], [avg_std[0] for avg_std in phago_stat], [avg_std[0] for avg_std in speed_stat])
@@ -416,3 +450,6 @@ ax6.plot(deaths_stat, marker='s')
 # ax7.set_ylabel("Specific velocity of difusion")
 
 plt.show()
+
+file = open("DataPySINDy.txt", "w")
+file.write(f'{phyto_num} {phago_num}')
