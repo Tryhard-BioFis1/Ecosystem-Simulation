@@ -77,7 +77,7 @@ The simulation offers tunable parameters such as metabolism rate, energy thresho
 
 ## Statistical Analysis and Visualization
 
-The simulation collects statistics on population size, average blob traits, and computational performance. These data are visualized through plots to analyze trends and patterns over time.
+The simulation collects statistics on population size, average blob traits, and computational performance. These data are visualized through plots to analyze trends and patterns over time. The document StudyAndConclusions.pdf contains the first results and conclusions of the project. It is an example of the usefulness of the code for understanding complex ecology concepts.
 
 ## Conclusion
 
