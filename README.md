@@ -1,4 +1,4 @@
-# Ecosystem Simulation Study
+# Ecosystem Simulation and Study
 
 ![LogoESS (1)](https://github.com/Tryhard-BioFis1/Ecosystem-Simulation/assets/157886495/6285b064-86d7-47a6-bbfe-78a0bf63a966)
 
